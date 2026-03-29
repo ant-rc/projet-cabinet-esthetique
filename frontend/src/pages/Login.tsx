@@ -19,12 +19,14 @@ export default function Login() {
 
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
 
   const [regFirstName, setRegFirstName] = useState('');
   const [regLastName, setRegLastName] = useState('');
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPassword, setRegPassword] = useState('');
+  const [showRegPassword, setShowRegPassword] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -129,7 +131,12 @@ export default function Login() {
             </div>
             <div>
               <label htmlFor="login-password" className="mb-1.5 block text-sm font-medium text-text">Mot de passe</label>
-              <input id="login-password" type="password" required autoComplete="current-password" className={inputClasses} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+              <div className="relative">
+                <input id="login-password" type={showLoginPassword ? 'text' : 'password'} required autoComplete="current-password" className={inputClasses} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} />
+                <button type="button" onClick={() => setShowLoginPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-text-light hover:text-primary-dark" aria-label={showLoginPassword ? 'Masquer' : 'Afficher'}>
+                  {showLoginPassword ? 'Masquer' : 'Afficher'}
+                </button>
+              </div>
             </div>
             <button type="submit" disabled={isLoading} className="mt-2 rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-lg disabled:opacity-60">
               {isLoading ? 'Connexion...' : 'Se connecter'}
@@ -157,7 +164,12 @@ export default function Login() {
             </div>
             <div>
               <label htmlFor="reg-password" className="mb-1.5 block text-sm font-medium text-text">Mot de passe</label>
-              <input id="reg-password" type="password" required autoComplete="new-password" className={inputClasses} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
+              <div className="relative">
+                <input id="reg-password" type={showRegPassword ? 'text' : 'password'} required autoComplete="new-password" className={inputClasses} value={regPassword} onChange={(e) => setRegPassword(e.target.value)} />
+                <button type="button" onClick={() => setShowRegPassword((p) => !p)} className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-medium text-text-light hover:text-primary-dark" aria-label={showRegPassword ? 'Masquer' : 'Afficher'}>
+                  {showRegPassword ? 'Masquer' : 'Afficher'}
+                </button>
+              </div>
             </div>
             <button type="submit" disabled={isLoading} className="mt-2 rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-lg disabled:opacity-60">
               {isLoading ? 'Inscription...' : 'Créer mon compte'}
