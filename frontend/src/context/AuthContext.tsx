@@ -22,17 +22,16 @@ const AuthContext = createContext<AuthContextType | null>(null);
 
 /**
  * Ensure user + profile rows exist in public tables.
- * Handles cases where the DB trigger didn't fire or user was created before trigger existed.
+ * Uses count queries to avoid .single() errors with 0 or >1 rows.
  */
 async function ensureUserAndProfile(authUser: User): Promise<void> {
-  // Check if user row exists
-  const { data: existingUser } = await supabase
+  // Check if user row exists (count to avoid .single() errors)
+  const { count: userCount } = await supabase
     .from('users')
-    .select('id')
-    .eq('id', authUser.id)
-    .single();
+    .select('*', { count: 'exact', head: true })
+    .eq('id', authUser.id);
 
-  if (!existingUser) {
+  if (userCount === 0) {
     await supabase.from('users').insert({
       id: authUser.id,
       email: authUser.email ?? '',
@@ -40,14 +39,13 @@ async function ensureUserAndProfile(authUser: User): Promise<void> {
     });
   }
 
-  // Check if profile row exists
-  const { data: existingProfile } = await supabase
+  // Check if profile exists
+  const { count: profileCount } = await supabase
     .from('profiles')
-    .select('id')
-    .eq('user_id', authUser.id)
-    .single();
+    .select('*', { count: 'exact', head: true })
+    .eq('user_id', authUser.id);
 
-  if (!existingProfile) {
+  if (profileCount === 0) {
     const meta = authUser.user_metadata ?? {};
     await supabase.from('profiles').insert({
       user_id: authUser.id,
@@ -69,8 +67,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await ensureUserAndProfile(authUser);
 
     const [userResult, profileResult] = await Promise.all([
-      supabase.from('users').select('*').eq('id', authUser.id).single(),
-      supabase.from('profiles').select('*').eq('user_id', authUser.id).limit(1).single(),
+      supabase.from('users').select('*').eq('id', authUser.id).maybeSingle(),
+      // Order by created_at desc + limit 1 to get the most recent profile
+      supabase.from('profiles').select('*').eq('user_id', authUser.id).order('created_at', { ascending: false }).limit(1).maybeSingle(),
     ]);
 
     if (userResult.data) {
