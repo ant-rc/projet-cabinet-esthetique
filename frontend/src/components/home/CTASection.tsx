@@ -20,7 +20,7 @@ export default function CTASection() {
           pas vers une peau durablement lisse.
         </p>
         <Link
-          to="/rendez-vous"
+          to="/reservation"
           className="rounded-full bg-primary px-10 py-4 text-base font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-1 hover:bg-primary-dark hover:shadow-xl"
         >
           Prendre rendez-vous

@@ -1,13 +1,17 @@
 import { Link } from 'react-router-dom';
-import { pricingData } from '@/data/pricing';
+import { servicesData } from '@/data/pricing';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 
-const PREVIEW_IDS = ['demi-jambes', 'maillot-integral', 'aisselles'] as const;
+const PREVIEW_IDS = [
+  '550e8400-e29b-41d4-a716-446655440022', // Demi-jambes (femme)
+  '550e8400-e29b-41d4-a716-446655440013', // Maillot intégral (femme)
+  '550e8400-e29b-41d4-a716-446655440015', // Aisselles (femme)
+] as const;
 
 export default function PricingPreview() {
   const { ref, isVisible } = useScrollReveal();
 
-  const previewItems = pricingData.filter((item) =>
+  const previewItems = servicesData.filter((item) =>
     (PREVIEW_IDS as readonly string[]).includes(item.id),
   );
 
@@ -26,13 +30,9 @@ export default function PricingPreview() {
               key={item.id}
               className="card-hover flex flex-col items-center gap-3 rounded-2xl border border-primary-light/50 bg-white p-8 text-center"
             >
-              <h3 className="font-serif text-lg font-semibold text-text">
-                {item.zone}
-              </h3>
-              <p className="text-3xl font-bold text-primary-dark">
-                {item.price}&euro;
-              </p>
-              <p className="text-xs text-text-light">par {item.unit}</p>
+              <h3 className="font-serif text-lg font-semibold text-text">{item.name}</h3>
+              <p className="text-3xl font-bold text-primary-dark">{item.price}&euro;</p>
+              <p className="text-xs text-text-light">par séance</p>
             </article>
           ))}
         </div>

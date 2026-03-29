@@ -12,12 +12,11 @@ interface BookingCalendarProps {
 function getWeekDays(startDate: Date): Date[] {
   const days: Date[] = [];
   const start = new Date(startDate);
-  // Start from Monday
   const dayOfWeek = start.getDay();
   const diff = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   start.setDate(start.getDate() + diff);
 
-  for (let i = 0; i < 6; i++) {
+  for (let i = 0; i < 7; i++) {
     const d = new Date(start);
     d.setDate(start.getDate() + i);
     days.push(d);
@@ -29,7 +28,7 @@ function formatDateKey(d: Date): string {
   return d.toISOString().split('T')[0];
 }
 
-const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam'];
+const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const MONTH_NAMES = [
   'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
   'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre',
@@ -41,8 +40,11 @@ export default function BookingCalendar({
   onSelectDate,
   onSelectTime,
 }: BookingCalendarProps) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
+  const today = useMemo(() => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    return d;
+  }, []);
 
   const [weekOffset, setWeekOffset] = useState(0);
 
@@ -50,7 +52,7 @@ export default function BookingCalendar({
     const d = new Date(today);
     d.setDate(d.getDate() + weekOffset * 7);
     return d;
-  }, [weekOffset]);
+  }, [today, weekOffset]);
 
   const weekDays = useMemo(() => getWeekDays(currentWeekStart), [currentWeekStart]);
 
@@ -89,9 +91,7 @@ export default function BookingCalendar({
         >
           &larr;
         </button>
-        <span className="text-sm font-semibold capitalize text-text">
-          {monthLabel}
-        </span>
+        <span className="text-sm font-semibold capitalize text-text">{monthLabel}</span>
         <button
           type="button"
           onClick={() => setWeekOffset((p) => p + 1)}
@@ -102,14 +102,14 @@ export default function BookingCalendar({
         </button>
       </div>
 
-      {/* Day selector - Doctolib style */}
-      <div className="grid grid-cols-6 gap-2">
+      {/* Day selector — 7 days (Mon closed = disabled) */}
+      <div className="grid grid-cols-7 gap-2">
         {weekDays.map((day, i) => {
           const key = formatDateKey(day);
           const isPast = day < today;
-          const isSunday = day.getDay() === 0;
+          const isMonday = day.getDay() === 1;
           const isSelected = key === selectedDate;
-          const isDisabled = isPast || isSunday;
+          const isDisabled = isPast || isMonday;
           const isToday = formatDateKey(day) === formatDateKey(today);
 
           return (
@@ -117,11 +117,8 @@ export default function BookingCalendar({
               key={key}
               type="button"
               disabled={isDisabled}
-              onClick={() => {
-                onSelectDate(key);
-                onSelectTime('');
-              }}
-              className={`relative flex flex-col items-center gap-1 rounded-xl px-2 py-3.5 text-center transition-all duration-300 ${
+              onClick={() => { onSelectDate(key); onSelectTime(''); }}
+              className={`relative flex flex-col items-center gap-1 rounded-xl px-1 py-3.5 text-center transition-all duration-300 ${
                 isSelected
                   ? 'bg-primary text-white shadow-lg shadow-primary/25'
                   : isDisabled
@@ -132,7 +129,10 @@ export default function BookingCalendar({
               <span className="text-[10px] font-semibold uppercase tracking-wider">
                 {DAY_NAMES[i]}
               </span>
-              <span className="text-xl font-bold">{day.getDate()}</span>
+              <span className="text-lg font-bold sm:text-xl">{day.getDate()}</span>
+              {isMonday && (
+                <span className="text-[8px] leading-none text-text-light/50">Fermé</span>
+              )}
               {isToday && (
                 <span className={`absolute -top-1 right-1 h-2 w-2 rounded-full ${isSelected ? 'bg-white' : 'bg-primary'}`} />
               )}
@@ -141,7 +141,7 @@ export default function BookingCalendar({
         })}
       </div>
 
-      {/* Time slots - Doctolib agenda style */}
+      {/* Time slots */}
       {selectedDate && (
         <div className="step-enter flex flex-col gap-5">
           <div className="flex items-center justify-between">
@@ -157,13 +157,15 @@ export default function BookingCalendar({
             </span>
           </div>
 
+          {slots.length === 0 && (
+            <p className="py-4 text-center text-sm text-text-light">Fermé ce jour.</p>
+          )}
+
           {morningSlots.length > 0 && (
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <div className="h-px flex-1 bg-rose-soft" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-light">
-                  Matin
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-light">Matin</p>
                 <div className="h-px flex-1 bg-rose-soft" />
               </div>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
@@ -192,9 +194,7 @@ export default function BookingCalendar({
             <div>
               <div className="mb-3 flex items-center gap-2">
                 <div className="h-px flex-1 bg-rose-soft" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-text-light">
-                  Après-midi
-                </p>
+                <p className="text-xs font-semibold uppercase tracking-wider text-text-light">Après-midi / Soir</p>
                 <div className="h-px flex-1 bg-rose-soft" />
               </div>
               <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
