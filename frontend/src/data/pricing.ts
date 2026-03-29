@@ -128,15 +128,12 @@ export function generateTimeSlots(date: string): { time: string; available: bool
   const endMinutes = endH * 60 + endM;
 
   const slots: { time: string; available: boolean }[] = [];
-  // Deterministic "booked" simulation based on date hash
-  const dateHash = date.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 
   for (let m = startMinutes; m < endMinutes; m += 30) {
     const h = Math.floor(m / 60);
     const min = m % 60;
     const time = `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
-    const slotIndex = slots.length;
-    slots.push({ time, available: (dateHash + slotIndex) % 5 !== 0 });
+    slots.push({ time, available: true });
   }
 
   return slots;
