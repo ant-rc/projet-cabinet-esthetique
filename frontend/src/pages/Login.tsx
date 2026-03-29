@@ -11,7 +11,7 @@ function sanitize(value: string): string {
 }
 
 export default function Login() {
-  const { isAuthenticated, role, login, loginWithGoogle, register } = useAuth();
+  const { isAuthenticated, role, login, register } = useAuth();
   const navigate = useNavigate();
 
   const [activeTab, setActiveTab] = useState<AuthTab>('login');

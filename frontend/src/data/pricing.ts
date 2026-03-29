@@ -107,11 +107,11 @@ export interface AvailabilitySlot {
 }
 
 export const availabilityData: AvailabilitySlot[] = [
-  { dayOfWeek: 2, startTime: '09:30', endTime: '21:30' }, // Mardi
-  { dayOfWeek: 3, startTime: '09:30', endTime: '21:30' }, // Mercredi
-  { dayOfWeek: 4, startTime: '09:30', endTime: '21:30' }, // Jeudi
-  { dayOfWeek: 5, startTime: '09:30', endTime: '21:30' }, // Vendredi
-  { dayOfWeek: 6, startTime: '09:30', endTime: '21:30' }, // Samedi
+  { dayOfWeek: 2, startTime: '09:30', endTime: '21:00' }, // Mardi
+  { dayOfWeek: 3, startTime: '09:30', endTime: '21:00' }, // Mercredi
+  { dayOfWeek: 4, startTime: '09:30', endTime: '21:00' }, // Jeudi
+  { dayOfWeek: 5, startTime: '09:30', endTime: '21:00' }, // Vendredi
+  { dayOfWeek: 6, startTime: '09:30', endTime: '21:00' }, // Samedi
   { dayOfWeek: 0, startTime: '09:30', endTime: '14:00' }, // Dimanche
 ];
 
@@ -180,19 +180,19 @@ export const faqData: FAQItem[] = [
 
 export const centerInfo = {
   name: 'AA Laser Med',
-  address: '12 Rue de la Santé',
-  city: '75013 Paris',
+  address: '49 Rue du Bois de la Garenne',
+  city: '77700 Magny-le-Hongre',
   phone: '01 23 45 67 89',
-  email: 'contact@aalasermed.fr',
-  googleMapsUrl: 'https://maps.google.com/?q=12+Rue+de+la+Sant%C3%A9+75013+Paris',
-  googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2626.0!2d2.34!3d48.83!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2z!5e0!3m2!1sfr!2sfr!4v1',
+  email: 'aalasermed@gmail.com',
+  googleMapsUrl: 'https://maps.google.com/?q=49+Rue+du+Bois+de+la+Garenne+77700+Magny-le-Hongre',
+  googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2632.5!2d2.7833!3d48.8667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e61b3b tried6b%3A0x0!2z!5e0!3m2!1sfr!2sfr!4v1',
   access: {
-    metro: 'Glacière (Ligne 6)',
-    bus: 'Lignes 21, 62',
-    parking: 'Parking Vinci rue de la Glacière',
+    rer: 'RER A — Marne-la-Vallée',
+    bus: 'Lignes locales',
+    parking: 'Parking gratuit sur place',
   },
   hours: {
-    tuesday_saturday: '09h30 – 21h30',
+    tuesday_saturday: '09h30 – 21h00',
     sunday: '09h30 – 14h00 (sur rendez-vous)',
     monday: 'Fermé',
   },
