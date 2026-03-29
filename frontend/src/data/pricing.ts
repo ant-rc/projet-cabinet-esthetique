@@ -187,12 +187,12 @@ export const centerInfo = {
   googleMapsUrl: 'https://maps.google.com/?q=49+Rue+du+Bois+de+la+Garenne+77700+Magny-le-Hongre',
   googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2632.5!2d2.7833!3d48.8667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e61b3b tried6b%3A0x0!2z!5e0!3m2!1sfr!2sfr!4v1',
   access: {
-    rer: 'RER A — Marne-la-Vallée',
-    bus: 'Lignes locales',
+    gare: 'Gare de Val d\'Europe',
+    bus: 'Bus 2234 — Arrêt La Boiserie (4 min à pied)',
     parking: 'Parking gratuit sur place',
   },
   hours: {
-    tuesday_saturday: '09h30 – 21h00',
+    tuesday_saturday: '09h30 – 21h00 (sur rendez-vous)',
     sunday: '09h30 – 14h00 (sur rendez-vous)',
     monday: 'Fermé',
   },

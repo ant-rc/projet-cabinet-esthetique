@@ -53,7 +53,7 @@ export default function Contact() {
             <div className="card-hover rounded-2xl border border-primary-light/50 bg-white p-6">
               <h2 className="font-serif text-lg font-semibold text-text">Accès</h2>
               <div className="mt-3 flex flex-col gap-2 text-sm text-text-light">
-                <p><span className="font-medium text-text">RER :</span> {centerInfo.access.rer}</p>
+                <p><span className="font-medium text-text">Gare :</span> {centerInfo.access.gare}</p>
                 <p><span className="font-medium text-text">Bus :</span> {centerInfo.access.bus}</p>
                 <p><span className="font-medium text-text">Parking :</span> {centerInfo.access.parking}</p>
               </div>
