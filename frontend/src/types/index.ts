@@ -1,77 +1,59 @@
-export interface Pricing {
+// ─── Database types (match Supabase schema) ───
+
+export type UserRole = 'client' | 'prestataire' | 'admin';
+export type Gender = 'male' | 'female';
+export type ServiceCategory = 'visage' | 'corps' | 'maillot' | 'bras' | 'jambes';
+export type AppointmentStatus = 'confirmed' | 'cancelled' | 'completed';
+
+export interface DbUser {
   id: string;
-  zone: string;
-  description: string;
+  email: string;
+  role: UserRole;
+  created_at: string;
+}
+
+export interface DbProfile {
+  id: string;
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  phone: string | null;
+  created_at: string;
+}
+
+export interface DbService {
+  id: string;
+  name: string;
+  category: ServiceCategory;
+  gender: Gender;
   price: number;
   duration: number; // minutes
-  unit: string;
-  category: EpilationCategory;
 }
 
-export type EpilationCategory = 'jambes' | 'maillot' | 'corps';
-
-export interface EpilationCategoryInfo {
-  id: EpilationCategory;
-  label: string;
-  icon: string;
-  description: string;
-}
-
-export type AppointmentType = 'consultation' | 'seance';
-
-export interface BookingFormData {
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  appointmentType: AppointmentType;
-  services: string[]; // multi-zone
-  date: string;
-  time: string;
-  message: string;
-  profileId: string;
-  totalPrice: number;
-  totalDuration: number;
-}
-
-export type AppointmentStatus = 'requested' | 'confirmed' | 'cancelled' | 'completed';
-
-export interface Appointment {
+export interface DbAppointment {
   id: string;
-  appointmentType: AppointmentType;
-  services: string[];
+  user_id: string;
+  service_id: string | null;
   date: string;
   time: string;
   status: AppointmentStatus;
-  createdAt: string;
-  profileId: string;
-  profileName: string;
-  totalPrice: number;
-  totalDuration: number;
+  is_first_consultation: boolean;
+  notes: string | null;
+  created_at: string;
 }
 
-export interface PatientProfile {
+export interface DbAvailability {
   id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  relation: string;
+  day_of_week: number; // 0=Sun, 1=Mon, ..., 6=Sat
+  start_time: string;
+  end_time: string;
 }
 
-export interface User {
-  id: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  appointments: Appointment[];
-  profiles: PatientProfile[];
-  hasCompletedConsultation: boolean;
-}
+// ─── App types ───
 
-export interface FAQItem {
-  question: string;
-  answer: string;
+export interface AppointmentWithService extends DbAppointment {
+  service?: DbService;
+  profile?: DbProfile;
 }
 
 export interface TimeSlotData {
@@ -79,36 +61,17 @@ export interface TimeSlotData {
   available: boolean;
 }
 
-// Patient file (provider side)
-export type SkinType = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
 
-export interface TreatmentNote {
-  id: string;
+// ─── Booking form ───
+
+export interface BookingFormData {
+  serviceIds: string[];
   date: string;
-  zone: string;
-  intensity: string;
-  skinType: SkinType;
+  time: string;
+  isFirstConsultation: boolean;
   notes: string;
-}
-
-export interface PatientFile {
-  userId: string;
-  firstName: string;
-  lastName: string;
-  email: string;
-  phone: string;
-  appointments: Appointment[];
-  treatmentNotes: TreatmentNote[];
-}
-
-// Provider notifications
-export type NotificationType = 'new_appointment' | 'cancellation';
-
-export interface ProviderNotification {
-  id: string;
-  type: NotificationType;
-  message: string;
-  createdAt: string;
-  read: boolean;
-  appointmentId: string;
 }

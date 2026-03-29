@@ -1,32 +1,20 @@
-import { pricingData } from '@/data/pricing';
-import type { Pricing } from '@/types';
+import { getServiceById } from '@/data/pricing';
+import type { DbService } from '@/types';
 
-/**
- * Get pricing data for multiple zones at once.
- */
-export function getPricingsForZones(zones: string[]): Pricing[] {
-  return zones
-    .map((zone) => pricingData.find((p) => p.zone === zone))
-    .filter((p): p is Pricing => p !== undefined);
+export function getServicesForIds(ids: string[]): DbService[] {
+  return ids
+    .map((id) => getServiceById(id))
+    .filter((s): s is DbService => s !== undefined);
 }
 
-/**
- * Calculate total price for selected zones.
- */
-export function calculateTotalPrice(zones: string[]): number {
-  return getPricingsForZones(zones).reduce((sum, p) => sum + p.price, 0);
+export function calculateTotalPrice(serviceIds: string[]): number {
+  return getServicesForIds(serviceIds).reduce((sum, s) => sum + s.price, 0);
 }
 
-/**
- * Calculate total duration in minutes for selected zones.
- */
-export function calculateTotalDuration(zones: string[]): number {
-  return getPricingsForZones(zones).reduce((sum, p) => sum + p.duration, 0);
+export function calculateTotalDuration(serviceIds: string[]): number {
+  return getServicesForIds(serviceIds).reduce((sum, s) => sum + s.duration, 0);
 }
 
-/**
- * Format duration in human-readable string.
- */
 export function formatDuration(minutes: number): string {
   if (minutes < 60) return `${minutes} min`;
   const hours = Math.floor(minutes / 60);
