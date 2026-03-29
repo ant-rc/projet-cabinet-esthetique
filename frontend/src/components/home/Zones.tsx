@@ -34,7 +34,7 @@ export default function Zones() {
                       className="flex items-center justify-between rounded-xl bg-nude px-4 py-3 transition-colors duration-200 hover:bg-rose-soft"
                     >
                       <span className="text-sm font-medium text-text">{item.name}</span>
-                      <span className="text-sm font-bold text-primary-dark">dès {item.price}&euro;</span>
+                      <span className="text-sm font-bold text-primary-dark">{item.price}&euro;</span>
                     </div>
                   ))}
                 </div>
