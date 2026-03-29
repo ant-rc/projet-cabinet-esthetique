@@ -12,6 +12,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<string | null>;
+  loginWithGoogle: () => Promise<string | null>;
   register: (email: string, password: string, firstName: string, lastName: string, phone: string) => Promise<string | null>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -109,6 +110,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
+  const loginWithGoogle = useCallback(async (): Promise<string | null> => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin + '/account' },
+    });
+    if (error) return error.message;
+    return null;
+  }, []);
+
   const register = useCallback(async (
     email: string,
     password: string,
@@ -162,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAuthenticated: session !== null && dbUser !== null,
       isLoading,
       login,
+      loginWithGoogle,
       register,
       logout,
       refreshProfile,

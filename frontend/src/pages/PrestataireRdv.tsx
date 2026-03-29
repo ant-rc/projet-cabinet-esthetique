@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getServiceById } from '@/data/pricing';
-import type { DbAppointment, AppointmentStatus } from '@/types';
+import type { DbAppointment, DbProfile, AppointmentStatus } from '@/types';
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; classes: string }> = {
   confirmed: { label: 'Confirmé', classes: 'bg-green-100 text-green-700' },
@@ -18,7 +18,7 @@ interface AppointmentRow extends DbAppointment {
 }
 
 export default function PrestataireRdv() {
-  const { isAuthenticated, isLoading: authLoading, role } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, role, logout } = useAuth();
   const navigate = useNavigate();
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,16 +27,19 @@ export default function PrestataireRdv() {
   const [searchClient, setSearchClient] = useState('');
 
   const fetchAll = useCallback(async () => {
-    const { data } = await supabase
-      .from('appointments')
-      .select('*, profiles!appointments_user_id_fkey(first_name, last_name, phone)')
-      .order('date', { ascending: false });
+    const [apptResult, profilesResult] = await Promise.all([
+      supabase.from('appointments').select('*').order('date', { ascending: false }),
+      supabase.from('profiles').select('*'),
+    ]);
 
-    if (data) {
-      const rows: AppointmentRow[] = (data as Record<string, unknown>[]).map((row) => {
-        const prof = row.profiles as { first_name: string; last_name: string; phone: string } | null;
+    const profiles = (profilesResult.data ?? []) as DbProfile[];
+    const profileMap = new Map(profiles.map((p) => [p.user_id, p]));
+
+    if (apptResult.data) {
+      const rows: AppointmentRow[] = (apptResult.data as DbAppointment[]).map((appt) => {
+        const prof = profileMap.get(appt.user_id);
         return {
-          ...(row as unknown as DbAppointment),
+          ...appt,
           profile_name: prof ? `${prof.first_name} ${prof.last_name}` : '—',
           profile_phone: prof?.phone ?? '',
         };
@@ -99,7 +102,24 @@ export default function PrestataireRdv() {
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
       <div className="mx-auto max-w-6xl">
-        <h1 className="font-serif text-3xl font-bold text-text md:text-4xl">Tous les rendez-vous</h1>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <h1 className="font-serif text-3xl font-bold text-text md:text-4xl">Tous les rendez-vous</h1>
+          <div className="flex gap-2">
+            <Link
+              to="/prestataire/dashboard"
+              className="rounded-full border border-primary px-5 py-2.5 text-sm font-medium text-primary-dark transition-all duration-300 hover:bg-primary hover:text-white"
+            >
+              Dashboard
+            </Link>
+            <button
+              type="button"
+              onClick={() => { logout(); navigate('/'); }}
+              className="rounded-full border border-rose-soft px-5 py-2.5 text-sm font-medium text-text-light transition-all duration-300 hover:bg-red-50 hover:text-red-600 hover:border-red-200"
+            >
+              Déconnexion
+            </button>
+          </div>
+        </div>
 
         {/* Filters */}
         <div className="mt-8 flex flex-wrap items-center gap-3">
