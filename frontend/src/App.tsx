@@ -1,14 +1,33 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import type { ReactNode } from 'react';
 
-import { AuthProvider } from '@/context/AuthContext';
+import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Layout from '@/components/layout/Layout';
 import Home from '@/pages/Home';
 import Pricing from '@/pages/Pricing';
 import Booking from '@/pages/Booking';
-import Profile from '@/pages/Profile';
+import Login from '@/pages/Login';
+import Account from '@/pages/Account';
+import MesRdv from '@/pages/MesRdv';
+import PrestataireDashboard from '@/pages/PrestataireDashboard';
+import PrestataireRdv from '@/pages/PrestataireRdv';
 import Contact from '@/pages/Contact';
-import Pro from '@/pages/Pro';
 import Legal from '@/pages/Legal';
+
+function RequireAuth({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading } = useAuth();
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  return <>{children}</>;
+}
+
+function RequirePrestataire({ children }: { children: ReactNode }) {
+  const { isAuthenticated, isLoading, role } = useAuth();
+  if (isLoading) return null;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  if (role !== 'prestataire') return <Navigate to="/" replace />;
+  return <>{children}</>;
+}
 
 export default function App() {
   return (
@@ -16,13 +35,24 @@ export default function App() {
       <BrowserRouter>
         <Routes>
           <Route element={<Layout />}>
+            {/* Public */}
             <Route index element={<Home />} />
             <Route path="tarifs" element={<Pricing />} />
-            <Route path="rendez-vous" element={<Booking />} />
-            <Route path="mon-compte" element={<Profile />} />
+            <Route path="reservation" element={<Booking />} />
+            <Route path="login" element={<Login />} />
             <Route path="contact" element={<Contact />} />
-            <Route path="pro" element={<Pro />} />
             <Route path="mentions-legales" element={<Legal />} />
+
+            {/* Client */}
+            <Route path="account" element={<RequireAuth><Account /></RequireAuth>} />
+            <Route path="mes-rdv" element={<RequireAuth><MesRdv /></RequireAuth>} />
+
+            {/* Prestataire */}
+            <Route path="prestataire/dashboard" element={<RequirePrestataire><PrestataireDashboard /></RequirePrestataire>} />
+            <Route path="prestataire/rdv" element={<RequirePrestataire><PrestataireRdv /></RequirePrestataire>} />
+
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/" replace />} />
           </Route>
         </Routes>
       </BrowserRouter>

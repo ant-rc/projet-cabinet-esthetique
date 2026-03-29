@@ -8,8 +8,7 @@ export default function Booking() {
           Prendre rendez-vous
         </h1>
         <p className="mt-4 text-center text-base text-text-light">
-          Choisissez votre prestation, sélectionnez un créneau disponible
-          et confirmez votre rendez-vous en quelques clics.
+          Choisissez votre profil, sélectionnez vos zones et réservez un créneau.
         </p>
 
         <div className="mt-10">

@@ -30,7 +30,7 @@ export default function Hero() {
 
           <div className="hero-animate-4 flex flex-col gap-4 sm:flex-row">
             <Link
-              to="/rendez-vous"
+              to="/reservation"
               className="rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-1 hover:bg-primary-dark hover:shadow-lg"
             >
               Prendre rendez-vous

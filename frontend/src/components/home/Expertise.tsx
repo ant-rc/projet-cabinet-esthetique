@@ -3,7 +3,7 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 const ITEMS = [
   {
     title: 'Consultation personnalisée',
-    description: 'Analyse de votre peau et définition d\u2019un protocole sur mesure.',
+    description: 'Analyse de votre peau et définition d’un protocole sur mesure.',
     icon: (
       <svg viewBox="0 0 40 40" fill="none" className="h-10 w-10" aria-hidden="true">
         <circle cx="20" cy="20" r="18" fill="#f5e6e0" />
