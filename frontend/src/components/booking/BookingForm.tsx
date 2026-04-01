@@ -7,29 +7,52 @@ import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getServicesByGender, getServicesByGenderAndCategory, getCategoriesForGender } from '@/data/pricing';
 import { calculateTotalPrice, calculateTotalDuration, formatDuration } from '@/utils/booking';
-import type { Gender, ServiceCategory } from '@/types';
+import { formatDateDisplay } from '@/utils/date';
+import type { Gender, ServiceCategory, BookingMode } from '@/types';
 import BookingCalendar from '@/components/booking/BookingCalendar';
 
-type Step = 'gender' | 'service' | 'datetime' | 'confirm';
+type Step = 'gender' | 'service' | 'datetime' | 'info' | 'confirm';
 
 const ALL_STEPS: { key: Step; label: string }[] = [
   { key: 'gender', label: 'Profil' },
   { key: 'service', label: 'Zones' },
   { key: 'datetime', label: 'Créneau' },
+  { key: 'info', label: 'Coordonnées' },
   { key: 'confirm', label: 'Confirmation' },
 ];
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const PHONE_REGEX = /^(?:(?:\+|00)33[\s.-]?|0)[1-9](?:[\s.-]?\d{2}){4}$/;
+
+function sanitize(value: string): string {
+  return value.replace(/[<>]/g, '').trim();
+}
 
 export default function BookingForm() {
   const { isAuthenticated, session } = useAuth();
   const [currentStep, setCurrentStep] = useState<Step>('gender');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Booking mode
+  const [bookingMode, setBookingMode] = useState<BookingMode | null>(
+    isAuthenticated ? 'authenticated' : null,
+  );
+
+  // Gender & type
   const [gender, setGender] = useState<Gender | null>(null);
   const [isFirstConsultation, setIsFirstConsultation] = useState(false);
   const [selectedServiceIds, setSelectedServiceIds] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<ServiceCategory | null>(null);
   const [date, setDate] = useState('');
   const [time, setTime] = useState('');
+
+  // Guest info
+  const [guestFirstName, setGuestFirstName] = useState('');
+  const [guestLastName, setGuestLastName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [guestEmail, setGuestEmail] = useState('');
+  const [guestMessage, setGuestMessage] = useState('');
+  const [infoErrors, setInfoErrors] = useState<Record<string, string>>({});
 
   const categories = useMemo(
     () => gender ? getCategoriesForGender(gender) : [],
@@ -52,11 +75,13 @@ export default function BookingForm() {
     [selectedServiceIds, isFirstConsultation],
   );
 
-  // For consultation, skip the service step
+  // Build visible steps based on mode
   const visibleSteps = useMemo(() => {
-    if (isFirstConsultation) return ALL_STEPS.filter((s) => s.key !== 'service');
-    return ALL_STEPS;
-  }, [isFirstConsultation]);
+    let steps = ALL_STEPS;
+    if (isFirstConsultation) steps = steps.filter((s) => s.key !== 'service');
+    if (bookingMode !== 'guest') steps = steps.filter((s) => s.key !== 'info');
+    return steps;
+  }, [isFirstConsultation, bookingMode]);
 
   const stepIndex = visibleSteps.findIndex((s) => s.key === currentStep);
 
@@ -82,34 +107,79 @@ export default function BookingForm() {
     return selectedServiceIds.map((id) => all.find((s) => s.id === id)?.name ?? id);
   }, [gender, selectedServiceIds]);
 
+  function validateGuestInfo(): boolean {
+    const errors: Record<string, string> = {};
+    const firstName = sanitize(guestFirstName);
+    const lastName = sanitize(guestLastName);
+    const phone = sanitize(guestPhone);
+    const email = sanitize(guestEmail);
+
+    if (!firstName) errors.firstName = 'Le prénom est requis.';
+    if (!lastName) errors.lastName = 'Le nom est requis.';
+    if (!phone) {
+      errors.phone = 'Le téléphone est requis.';
+    } else if (!PHONE_REGEX.test(phone)) {
+      errors.phone = 'Format de téléphone invalide.';
+    }
+    if (!email) {
+      errors.email = 'L\'e-mail est requis.';
+    } else if (!EMAIL_REGEX.test(email)) {
+      errors.email = 'Format d\'e-mail invalide.';
+    }
+
+    setInfoErrors(errors);
+    return Object.keys(errors).length === 0;
+  }
+
+  function handleInfoNext() {
+    if (validateGuestInfo()) {
+      nextStep();
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
-    if (!isAuthenticated || !session?.user) {
+
+    const isGuest = bookingMode === 'guest';
+
+    if (!isGuest && (!isAuthenticated || !session?.user)) {
       toast.error('Veuillez vous connecter pour réserver.');
       return;
     }
 
     setIsSubmitting(true);
     try {
+      const guestNotes = isGuest
+        ? JSON.stringify({
+          booking_mode: 'guest',
+          guest_first_name: sanitize(guestFirstName),
+          guest_last_name: sanitize(guestLastName),
+          guest_phone: sanitize(guestPhone),
+          guest_email: sanitize(guestEmail),
+          guest_message: sanitize(guestMessage),
+        })
+        : null;
+
       if (isFirstConsultation) {
         const { error } = await supabase.from('appointments').insert({
-          user_id: session.user.id,
+          user_id: isGuest ? null : session!.user.id,
           service_id: null,
           date,
           time,
           status: 'confirmed',
           is_first_consultation: true,
+          notes: guestNotes,
         });
         if (error) throw error;
       } else {
-        // Insert one appointment per selected service
         const inserts = selectedServiceIds.map((serviceId) => ({
-          user_id: session.user.id,
+          user_id: isGuest ? null : session!.user.id,
           service_id: serviceId,
           date,
           time,
           status: 'confirmed',
           is_first_consultation: false,
+          notes: guestNotes,
         }));
         const { error } = await supabase.from('appointments').insert(inserts);
         if (error) throw error;
@@ -123,18 +193,27 @@ export default function BookingForm() {
 
       // Reset form
       setCurrentStep('gender');
+      setBookingMode(isAuthenticated ? 'authenticated' : null);
       setGender(null);
       setIsFirstConsultation(false);
       setSelectedServiceIds([]);
       setSelectedCategory(null);
       setDate('');
       setTime('');
+      setGuestFirstName('');
+      setGuestLastName('');
+      setGuestPhone('');
+      setGuestEmail('');
+      setGuestMessage('');
+      setInfoErrors({});
     } catch {
       toast.error('Une erreur est survenue. Veuillez réessayer.');
     } finally {
       setIsSubmitting(false);
     }
   }
+
+  const inputClasses = 'w-full rounded-xl border border-rose-soft bg-white px-4 py-3 text-sm text-text placeholder:text-text-light/50 transition-all duration-200 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20';
 
   return (
     <div className="flex flex-col gap-8">
@@ -167,97 +246,132 @@ export default function BookingForm() {
         })}
       </div>
 
-      {!isAuthenticated && (
-        <div className="rounded-xl border border-primary-light/50 bg-gradient-to-r from-nude to-rose-soft/50 p-4 text-sm text-text-light">
-          <Link to="/login" className="font-semibold text-primary-dark underline underline-offset-2">
-            Connectez-vous
-          </Link>{' '}
-          pour réserver et suivre vos rendez-vous.
-        </div>
-      )}
-
       {/* Step: Gender + Type */}
       {currentStep === 'gender' && (
         <div className="step-enter flex flex-col gap-6">
-          <h3 className="font-serif text-xl font-semibold text-text">Votre profil</h3>
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <button
-              type="button"
-              onClick={() => setGender('female')}
-              className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
-                gender === 'female'
-                  ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
-                  : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
-              }`}
-            >
-              <span className="font-serif text-lg font-semibold text-text">Femme</span>
-              <p className="text-sm text-text-light">Tarifs et zones adaptés</p>
-            </button>
-            <button
-              type="button"
-              onClick={() => setGender('male')}
-              className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
-                gender === 'male'
-                  ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
-                  : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
-              }`}
-            >
-              <span className="font-serif text-lg font-semibold text-text">Homme</span>
-              <p className="text-sm text-text-light">Tarifs et zones adaptés</p>
-            </button>
-          </div>
-
-          {gender && (
-            <div className="step-enter">
-              <h3 className="font-serif text-xl font-semibold text-text">Type de rendez-vous</h3>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2">
-                <button
-                  type="button"
-                  onClick={() => setIsFirstConsultation(true)}
-                  className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
-                    isFirstConsultation
-                      ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
-                      : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
-                  }`}
+          {/* Auth choice for non-authenticated users */}
+          {!isAuthenticated && bookingMode === null && (
+            <div className="flex flex-col gap-4">
+              <h3 className="font-serif text-xl font-semibold text-text">Comment souhaitez-vous réserver ?</h3>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Link
+                  to="/login"
+                  className="flex flex-col gap-2 rounded-xl border border-rose-soft bg-white p-6 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-serif text-lg font-semibold text-text">Consultation</span>
-                    <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Gratuit</span>
-                  </div>
+                  <span className="font-serif text-lg font-semibold text-text">Se connecter / S&apos;inscrire</span>
                   <p className="text-sm text-text-light">
-                    Première visite : évaluation de peau + tir d&apos;essai. Durée : 30 min.
+                    Suivez vos rendez-vous et gérez votre historique.
                   </p>
-                </button>
+                </Link>
                 <button
                   type="button"
-                  onClick={() => setIsFirstConsultation(false)}
-                  className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
-                    !isFirstConsultation && gender
-                      ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
-                      : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
-                  }`}
+                  onClick={() => setBookingMode('guest')}
+                  className="flex flex-col gap-2 rounded-xl border border-rose-soft bg-white p-6 text-left transition-all duration-300 hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md"
                 >
-                  <div className="flex items-center justify-between">
-                    <span className="font-serif text-lg font-semibold text-text">Séance laser</span>
-                    <span className="rounded-full bg-nude px-3 py-1 text-xs font-bold text-primary-dark">Selon zones</span>
-                  </div>
+                  <span className="font-serif text-lg font-semibold text-text">Continuer sans compte</span>
                   <p className="text-sm text-text-light">
-                    Sélectionnez une ou plusieurs zones à traiter.
+                    Réservez rapidement en renseignant vos coordonnées.
                   </p>
                 </button>
               </div>
             </div>
           )}
 
-          <button
-            type="button"
-            disabled={!gender}
-            onClick={nextStep}
-            className="self-end rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            Continuer
-          </button>
+          {/* Gender + Type selection (shown when mode is chosen or user is authenticated) */}
+          {(isAuthenticated || bookingMode !== null) && (
+            <>
+              <h3 className="font-serif text-xl font-semibold text-text">Votre profil</h3>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={() => setGender('female')}
+                  className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
+                    gender === 'female'
+                      ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
+                      : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
+                  }`}
+                >
+                  <span className="font-serif text-lg font-semibold text-text">Femme</span>
+                  <p className="text-sm text-text-light">Tarifs et zones adaptés</p>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGender('male')}
+                  className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
+                    gender === 'male'
+                      ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
+                      : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
+                  }`}
+                >
+                  <span className="font-serif text-lg font-semibold text-text">Homme</span>
+                  <p className="text-sm text-text-light">Tarifs et zones adaptés</p>
+                </button>
+              </div>
+
+              {gender && (
+                <div className="step-enter">
+                  <h3 className="font-serif text-xl font-semibold text-text">Type de rendez-vous</h3>
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    <button
+                      type="button"
+                      onClick={() => setIsFirstConsultation(true)}
+                      className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
+                        isFirstConsultation
+                          ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
+                          : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-serif text-lg font-semibold text-text">Consultation</span>
+                        <span className="rounded-full bg-green-100 px-3 py-1 text-xs font-bold text-green-700">Gratuit</span>
+                      </div>
+                      <p className="text-sm text-text-light">
+                        Première visite : évaluation de peau + tir d&apos;essai. Durée : 30 min.
+                      </p>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setIsFirstConsultation(false)}
+                      className={`flex flex-col gap-2 rounded-xl p-6 text-left transition-all duration-300 ${
+                        !isFirstConsultation && gender
+                          ? 'border-2 border-primary bg-rose-soft/50 shadow-lg shadow-primary/10'
+                          : 'border border-rose-soft bg-white hover:-translate-y-0.5 hover:border-primary-light hover:shadow-md'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-serif text-lg font-semibold text-text">Séance laser</span>
+                        <span className="rounded-full bg-nude px-3 py-1 text-xs font-bold text-primary-dark">Selon zones</span>
+                      </div>
+                      <p className="text-sm text-text-light">
+                        Sélectionnez une ou plusieurs zones à traiter.
+                      </p>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex justify-between">
+                {!isAuthenticated && bookingMode === 'guest' && (
+                  <button
+                    type="button"
+                    onClick={() => { setBookingMode(null); setGender(null); }}
+                    className="rounded-full border border-rose-soft px-6 py-3 text-sm font-medium text-text-light transition-all duration-300 hover:bg-nude hover:shadow-sm"
+                  >
+                    Retour
+                  </button>
+                )}
+                <button
+                  type="button"
+                  disabled={!gender}
+                  onClick={nextStep}
+                  className="ml-auto rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Continuer
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -369,6 +483,7 @@ export default function BookingForm() {
           <BookingCalendar
             selectedDate={date}
             selectedTime={time}
+            durationMinutes={totalDuration}
             onSelectDate={setDate}
             onSelectTime={setTime}
           />
@@ -382,6 +497,112 @@ export default function BookingForm() {
               disabled={!date || !time}
               onClick={nextStep}
               className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              Continuer
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Step: Guest info */}
+      {currentStep === 'info' && bookingMode === 'guest' && (
+        <div className="step-enter flex flex-col gap-6">
+          <h3 className="font-serif text-xl font-semibold text-text">Vos coordonnées</h3>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="guest-first-name" className="text-sm font-medium text-text">
+                Prénom <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="guest-first-name"
+                type="text"
+                value={guestFirstName}
+                onChange={(e) => setGuestFirstName(e.target.value)}
+                placeholder="Votre prénom"
+                className={inputClasses}
+              />
+              {infoErrors.firstName && (
+                <span className="text-xs text-red-500">{infoErrors.firstName}</span>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="guest-last-name" className="text-sm font-medium text-text">
+                Nom <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="guest-last-name"
+                type="text"
+                value={guestLastName}
+                onChange={(e) => setGuestLastName(e.target.value)}
+                placeholder="Votre nom"
+                className={inputClasses}
+              />
+              {infoErrors.lastName && (
+                <span className="text-xs text-red-500">{infoErrors.lastName}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="guest-phone" className="text-sm font-medium text-text">
+                Téléphone <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="guest-phone"
+                type="tel"
+                value={guestPhone}
+                onChange={(e) => setGuestPhone(e.target.value)}
+                placeholder="06 12 34 56 78"
+                className={inputClasses}
+              />
+              {infoErrors.phone && (
+                <span className="text-xs text-red-500">{infoErrors.phone}</span>
+              )}
+            </div>
+
+            <div className="flex flex-col gap-1.5">
+              <label htmlFor="guest-email" className="text-sm font-medium text-text">
+                E-mail <span className="text-red-500">*</span>
+              </label>
+              <input
+                id="guest-email"
+                type="email"
+                value={guestEmail}
+                onChange={(e) => setGuestEmail(e.target.value)}
+                placeholder="votre@email.com"
+                className={inputClasses}
+              />
+              {infoErrors.email && (
+                <span className="text-xs text-red-500">{infoErrors.email}</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="guest-message" className="text-sm font-medium text-text">
+              Message <span className="text-xs text-text-light">(optionnel)</span>
+            </label>
+            <textarea
+              id="guest-message"
+              value={guestMessage}
+              onChange={(e) => setGuestMessage(e.target.value)}
+              placeholder="Informations complémentaires..."
+              rows={3}
+              className={inputClasses}
+            />
+          </div>
+
+          <div className="flex justify-between">
+            <button type="button" onClick={prevStep} className="rounded-full border border-rose-soft px-6 py-3 text-sm font-medium text-text-light transition-all duration-300 hover:bg-nude hover:shadow-sm">
+              Retour
+            </button>
+            <button
+              type="button"
+              onClick={handleInfoNext}
+              className="rounded-full bg-primary px-8 py-3 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-lg"
             >
               Continuer
             </button>
@@ -425,13 +646,29 @@ export default function BookingForm() {
               <div className="flex items-center justify-between px-6 py-4">
                 <span className="text-sm text-text-light">Date</span>
                 <span className="font-semibold text-text">
-                  {new Date(date).toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  {formatDateDisplay(date, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
                 </span>
               </div>
               <div className="flex items-center justify-between px-6 py-4">
                 <span className="text-sm text-text-light">Heure</span>
                 <span className="font-semibold text-text">{time}</span>
               </div>
+              {bookingMode === 'guest' && (
+                <>
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <span className="text-sm text-text-light">Nom</span>
+                    <span className="font-semibold text-text">{sanitize(guestFirstName)} {sanitize(guestLastName)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <span className="text-sm text-text-light">Téléphone</span>
+                    <span className="font-semibold text-text">{sanitize(guestPhone)}</span>
+                  </div>
+                  <div className="flex items-center justify-between px-6 py-4">
+                    <span className="text-sm text-text-light">E-mail</span>
+                    <span className="font-semibold text-text">{sanitize(guestEmail)}</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -441,7 +678,7 @@ export default function BookingForm() {
             </button>
             <button
               type="submit"
-              disabled={isSubmitting || !isAuthenticated}
+              disabled={isSubmitting}
               className="rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-50"
             >
               {isSubmitting ? 'Envoi en cours...' : 'Confirmer le rendez-vous'}

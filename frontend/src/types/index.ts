@@ -3,7 +3,7 @@
 export type UserRole = 'client' | 'prestataire' | 'admin';
 export type Gender = 'male' | 'female';
 export type ServiceCategory = 'visage' | 'corps' | 'maillot' | 'bras' | 'jambes';
-export type AppointmentStatus = 'confirmed' | 'cancelled' | 'completed';
+export type AppointmentStatus = 'pending' | 'confirmed' | 'cancelled' | 'rescheduled' | 'completed' | 'no_show';
 
 export interface DbUser {
   id: string;
@@ -68,10 +68,17 @@ export interface FAQItem {
 
 // ─── Booking form ───
 
+export type BookingMode = 'authenticated' | 'guest';
+
 export interface BookingFormData {
   serviceIds: string[];
   date: string;
   time: string;
   isFirstConsultation: boolean;
   notes: string;
+  bookingMode: BookingMode;
+  guestFirstName?: string;
+  guestLastName?: string;
+  guestPhone?: string;
+  guestEmail?: string;
 }

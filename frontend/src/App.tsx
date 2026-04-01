@@ -11,6 +11,8 @@ import Account from '@/pages/Account';
 import MesRdv from '@/pages/MesRdv';
 import PrestataireDashboard from '@/pages/PrestataireDashboard';
 import PrestataireRdv from '@/pages/PrestataireRdv';
+import MedicalIntake from '@/pages/MedicalIntake';
+import ConsentFormPage from '@/pages/ConsentFormPage';
 import Contact from '@/pages/Contact';
 import Legal from '@/pages/Legal';
 
@@ -50,6 +52,8 @@ export default function App() {
             {/* Prestataire */}
             <Route path="prestataire/dashboard" element={<RequirePrestataire><PrestataireDashboard /></RequirePrestataire>} />
             <Route path="prestataire/rdv" element={<RequirePrestataire><PrestataireRdv /></RequirePrestataire>} />
+            <Route path="prestataire/intake" element={<RequirePrestataire><MedicalIntake /></RequirePrestataire>} />
+            <Route path="prestataire/consent" element={<RequirePrestataire><ConsentFormPage /></RequirePrestataire>} />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/" replace />} />

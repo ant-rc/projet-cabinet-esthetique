@@ -1,29 +1,24 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getServiceById, servicesData } from '@/data/pricing';
+import { formatDateKey, formatDateDisplay } from '@/utils/date';
 import type { DbAppointment, DbProfile, AppointmentStatus } from '@/types';
+import type { FitzpatrickType, TreatmentSession } from '@/types/medical';
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; classes: string }> = {
+  pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-700' },
   confirmed: { label: 'Confirmé', classes: 'bg-green-100 text-green-700' },
   cancelled: { label: 'Annulé', classes: 'bg-red-100 text-red-700' },
+  rescheduled: { label: 'Déplacé', classes: 'bg-purple-100 text-purple-700' },
   completed: { label: 'Terminé', classes: 'bg-blue-100 text-blue-700' },
+  no_show: { label: 'Absent', classes: 'bg-gray-100 text-gray-700' },
 };
 
-type SkinType = 'I' | 'II' | 'III' | 'IV' | 'V' | 'VI';
-const SKIN_TYPES: SkinType[] = ['I', 'II', 'III', 'IV', 'V', 'VI'];
-
-interface TreatmentNote {
-  id: string;
-  date: string;
-  zone: string;
-  intensity: string;
-  skinType: SkinType;
-  notes: string;
-}
+const SKIN_TYPES: FitzpatrickType[] = ['I', 'II', 'III', 'IV', 'V', 'VI'];
 
 interface AppointmentRow extends DbAppointment {
   profile_name: string;
@@ -31,19 +26,346 @@ interface AppointmentRow extends DbAppointment {
 
 type Tab = 'appointments' | 'patients' | 'notifications';
 
-// ─── localStorage helpers for treatment notes ───
-function getTreatmentNotes(userId: string): TreatmentNote[] {
-  const stored = localStorage.getItem(`aa_laser_notes_${userId}`);
-  return stored ? JSON.parse(stored) : [];
+// ─── Migration helper: old TreatmentNote -> TreatmentSession ───
+
+function migrateLegacyNote(note: Record<string, unknown>): TreatmentSession {
+  return {
+    id: (note.id as string) ?? crypto.randomUUID(),
+    patientId: '',
+    appointmentId: null,
+    date: (note.date as string) ?? '',
+    zone: (note.zone as string) ?? '',
+    spotSize: '',
+    fluence: (note.intensity as string) ?? '',
+    pulseDuration: '',
+    coolingLevel: '',
+    endpointObservation: '',
+    adverseEffects: '',
+    comments: (note.notes as string) ?? '',
+    skinType: ((note.skinType as string) ?? 'II') as FitzpatrickType,
+    createdBy: '',
+    createdAt: (note.date as string) ?? new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
 }
 
-function saveTreatmentNotes(userId: string, notes: TreatmentNote[]) {
-  localStorage.setItem(`aa_laser_notes_${userId}`, JSON.stringify(notes));
+// ─── localStorage helpers for treatment sessions ───
+
+function getPatientSessions(userId: string): TreatmentSession[] {
+  const newData = localStorage.getItem(`aa_laser_sessions_${userId}`);
+  if (newData) return JSON.parse(newData) as TreatmentSession[];
+
+  // Fallback: migrate old notes
+  const oldData = localStorage.getItem(`aa_laser_notes_${userId}`);
+  if (oldData) {
+    const oldNotes = JSON.parse(oldData) as Record<string, unknown>[];
+    const migrated = oldNotes.map(migrateLegacyNote);
+    localStorage.setItem(`aa_laser_sessions_${userId}`, JSON.stringify(migrated));
+    return migrated;
+  }
+
+  return [];
+}
+
+function savePatientSessions(userId: string, sessions: TreatmentSession[]): void {
+  localStorage.setItem(`aa_laser_sessions_${userId}`, JSON.stringify(sessions));
 }
 
 function sanitize(value: string): string {
   return value.replace(/[<>]/g, '').trim();
 }
+
+// ─── Session form state ───
+
+interface SessionFormState {
+  zone: string;
+  date: string;
+  spotSize: string;
+  fluence: string;
+  pulseDuration: string;
+  coolingLevel: string;
+  skinType: FitzpatrickType;
+  endpointObservation: string;
+  adverseEffects: string;
+  comments: string;
+}
+
+function emptyFormState(): SessionFormState {
+  return {
+    zone: '',
+    date: formatDateKey(new Date()),
+    spotSize: '',
+    fluence: '',
+    pulseDuration: '',
+    coolingLevel: '',
+    skinType: 'II',
+    endpointObservation: '',
+    adverseEffects: '',
+    comments: '',
+  };
+}
+
+// ─── Accordion card for a single session ───
+
+function SessionCard({
+  session,
+  isOpen,
+  onToggle,
+  onEdit,
+  onDelete,
+}: {
+  session: TreatmentSession;
+  isOpen: boolean;
+  onToggle: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-rose-soft bg-white overflow-hidden transition-shadow hover:shadow-sm">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left sm:px-5"
+      >
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:items-center sm:gap-3">
+          <span className="font-medium text-text">{session.zone}</span>
+          <span className="text-xs text-text-light">
+            {formatDateDisplay(session.date, { day: 'numeric', month: 'short', year: 'numeric' })}
+          </span>
+        </div>
+        <svg
+          className={`h-4 w-4 shrink-0 text-text-light transition-transform duration-300 ${isOpen ? 'rotate-180' : ''}`}
+          fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <div
+        className="grid transition-[grid-template-rows] duration-300 ease-out"
+        style={{ gridTemplateRows: isOpen ? '1fr' : '0fr' }}
+      >
+        <div className="overflow-hidden">
+          <div className="border-t border-rose-soft/60 px-4 py-4 sm:px-5">
+            {/* Laser parameters grid */}
+            <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-dark">
+              Paramètres laser
+            </p>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm sm:grid-cols-4">
+              <div>
+                <span className="text-text-light">Spot size</span>
+                <p className="font-medium text-text">{session.spotSize || '—'}</p>
+              </div>
+              <div>
+                <span className="text-text-light">Fluence</span>
+                <p className="font-medium text-text">{session.fluence || '—'}</p>
+              </div>
+              <div>
+                <span className="text-text-light">Impulsion</span>
+                <p className="font-medium text-text">{session.pulseDuration || '—'}</p>
+              </div>
+              <div>
+                <span className="text-text-light">Refroidissement</span>
+                <p className="font-medium text-text">{session.coolingLevel || '—'}</p>
+              </div>
+            </div>
+
+            {/* Skin type */}
+            <div className="mt-3 text-sm">
+              <span className="text-text-light">Phototype : </span>
+              <span className="font-medium text-text">{session.skinType}</span>
+            </div>
+
+            {/* Observations */}
+            {(session.endpointObservation || session.adverseEffects || session.comments) && (
+              <div className="mt-3 flex flex-col gap-1.5 text-sm">
+                {session.endpointObservation && (
+                  <div>
+                    <span className="text-text-light">Endpoint : </span>
+                    <span className="text-text">{session.endpointObservation}</span>
+                  </div>
+                )}
+                {session.adverseEffects && (
+                  <div>
+                    <span className="text-text-light">Effets secondaires : </span>
+                    <span className="text-text">{session.adverseEffects}</span>
+                  </div>
+                )}
+                {session.comments && (
+                  <div>
+                    <span className="text-text-light">Commentaires : </span>
+                    <span className="text-text">{session.comments}</span>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Actions */}
+            <div className="mt-4 flex gap-2">
+              <button
+                type="button"
+                onClick={onEdit}
+                className="rounded-full border border-primary-light px-4 py-1.5 text-xs font-semibold text-primary-dark transition-colors hover:bg-primary-light/30"
+              >
+                Modifier
+              </button>
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded-full border border-red-200 px-4 py-1.5 text-xs font-semibold text-red-500 transition-colors hover:bg-red-50"
+              >
+                Supprimer
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Session form (shared between add & edit) ───
+
+function SessionForm({
+  state,
+  onChange,
+  onSubmit,
+  onCancel,
+  submitLabel,
+  zoneNames,
+  inputClasses,
+}: {
+  state: SessionFormState;
+  onChange: (patch: Partial<SessionFormState>) => void;
+  onSubmit: (e: FormEvent) => void;
+  onCancel?: () => void;
+  submitLabel: string;
+  zoneNames: string[];
+  inputClasses: string;
+}) {
+  return (
+    <form onSubmit={onSubmit} className="flex flex-col gap-5">
+      {/* Section 1 — General */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-dark">
+          Général
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <select
+            required
+            className={inputClasses}
+            value={state.zone}
+            onChange={(e) => onChange({ zone: e.target.value })}
+          >
+            <option value="">Zone traitée</option>
+            {zoneNames.map((z) => <option key={z} value={z}>{z}</option>)}
+          </select>
+          <input
+            type="date"
+            className={inputClasses}
+            value={state.date}
+            onChange={(e) => onChange({ date: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {/* Section 2 — Laser parameters */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-dark">
+          Paramètres laser
+        </p>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+          <input
+            type="text"
+            placeholder="18mm"
+            className={inputClasses}
+            value={state.spotSize}
+            onChange={(e) => onChange({ spotSize: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="20 J/cm²"
+            className={inputClasses}
+            value={state.fluence}
+            onChange={(e) => onChange({ fluence: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="3ms"
+            className={inputClasses}
+            value={state.pulseDuration}
+            onChange={(e) => onChange({ pulseDuration: e.target.value })}
+          />
+          <input
+            type="text"
+            placeholder="CryoAir max"
+            className={inputClasses}
+            value={state.coolingLevel}
+            onChange={(e) => onChange({ coolingLevel: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {/* Section 3 — Observations */}
+      <div>
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wider text-primary-dark">
+          Observations
+        </p>
+        <div className="flex flex-col gap-3">
+          <select
+            className={inputClasses}
+            value={state.skinType}
+            onChange={(e) => onChange({ skinType: e.target.value as FitzpatrickType })}
+          >
+            {SKIN_TYPES.map((st) => <option key={st} value={st}>Phototype {st}</option>)}
+          </select>
+          <textarea
+            rows={2}
+            placeholder="Érythème périfolliculaire, œdème..."
+            className={inputClasses}
+            value={state.endpointObservation}
+            onChange={(e) => onChange({ endpointObservation: e.target.value })}
+          />
+          <textarea
+            rows={2}
+            placeholder="Aucun / Rougeur légère..."
+            className={inputClasses}
+            value={state.adverseEffects}
+            onChange={(e) => onChange({ adverseEffects: e.target.value })}
+          />
+          <textarea
+            rows={2}
+            placeholder="Commentaires..."
+            className={inputClasses}
+            value={state.comments}
+            onChange={(e) => onChange({ comments: e.target.value })}
+          />
+        </div>
+      </div>
+
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          type="submit"
+          className="rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white transition-colors hover:bg-primary-dark"
+        >
+          {submitLabel}
+        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            className="rounded-full border border-rose-soft px-5 py-2 text-sm text-text-light transition-colors hover:bg-white"
+          >
+            Annuler
+          </button>
+        )}
+      </div>
+    </form>
+  );
+}
+
+// ─── Main dashboard ───
 
 export default function PrestataireDashboard() {
   const { isAuthenticated, isLoading: authLoading, role, logout } = useAuth();
@@ -61,20 +383,17 @@ export default function PrestataireDashboard() {
 
   // Patients
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
-  const [notesVersion, setNotesVersion] = useState(0);
+  const [sessionsVersion, setSessionsVersion] = useState(0);
 
-  // Treatment note form
-  const [noteZone, setNoteZone] = useState('');
-  const [noteIntensity, setNoteIntensity] = useState('');
-  const [noteSkinType, setNoteSkinType] = useState<SkinType>('II');
-  const [noteText, setNoteText] = useState('');
+  // Session form (add new)
+  const [sessionForm, setSessionForm] = useState<SessionFormState>(emptyFormState);
 
-  // Edit note
-  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
-  const [editZone, setEditZone] = useState('');
-  const [editIntensity, setEditIntensity] = useState('');
-  const [editSkinType, setEditSkinType] = useState<SkinType>('II');
-  const [editText, setEditText] = useState('');
+  // Edit session
+  const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
+  const [editForm, setEditForm] = useState<SessionFormState>(emptyFormState);
+
+  // Accordion state
+  const [openSessionIds, setOpenSessionIds] = useState<Set<string>>(new Set());
 
   const fetchAll = useCallback(async () => {
     const [apptResult, profilesResult] = await Promise.all([
@@ -147,56 +466,104 @@ export default function PrestataireDashboard() {
     () => selectedPatientId ? appointments.filter((a) => a.user_id === selectedPatientId) : [],
     [selectedPatientId, appointments],
   );
-  const patientNotes = useMemo(
-    () => selectedPatientId ? getTreatmentNotes(selectedPatientId) : [],
+  const patientSessions = useMemo(
+    () => selectedPatientId ? getPatientSessions(selectedPatientId) : [],
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedPatientId, notesVersion],
+    [selectedPatientId, sessionsVersion],
   );
 
   const zoneNames = servicesData.map((s) => s.name);
 
-  function handleAddNote(e: FormEvent) {
+  // ─── Session CRUD ───
+
+  function toggleSessionOpen(id: string) {
+    setOpenSessionIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
+
+  function handleAddSession(e: FormEvent) {
     e.preventDefault();
-    if (!selectedPatientId || !noteZone) return;
-    const note: TreatmentNote = {
+    if (!selectedPatientId || !sessionForm.zone) return;
+    const now = new Date().toISOString();
+    const session: TreatmentSession = {
       id: crypto.randomUUID(),
-      date: new Date().toISOString().split('T')[0],
-      zone: sanitize(noteZone),
-      intensity: sanitize(noteIntensity),
-      skinType: noteSkinType,
-      notes: sanitize(noteText),
+      patientId: selectedPatientId,
+      appointmentId: null,
+      date: sessionForm.date || formatDateKey(new Date()),
+      zone: sanitize(sessionForm.zone),
+      spotSize: sanitize(sessionForm.spotSize),
+      fluence: sanitize(sessionForm.fluence),
+      pulseDuration: sanitize(sessionForm.pulseDuration),
+      coolingLevel: sanitize(sessionForm.coolingLevel),
+      endpointObservation: sanitize(sessionForm.endpointObservation),
+      adverseEffects: sanitize(sessionForm.adverseEffects),
+      comments: sanitize(sessionForm.comments),
+      skinType: sessionForm.skinType,
+      createdBy: '',
+      createdAt: now,
+      updatedAt: now,
     };
-    const notes = getTreatmentNotes(selectedPatientId);
-    notes.push(note);
-    saveTreatmentNotes(selectedPatientId, notes);
-    setNoteZone(''); setNoteIntensity(''); setNoteText('');
-    setNotesVersion((v) => v + 1);
+    const sessions = getPatientSessions(selectedPatientId);
+    sessions.push(session);
+    savePatientSessions(selectedPatientId, sessions);
+    setSessionForm(emptyFormState());
+    setSessionsVersion((v) => v + 1);
+    toast.success('Séance ajoutée.');
   }
 
-  function startEditNote(note: TreatmentNote) {
-    setEditingNoteId(note.id);
-    setEditZone(note.zone); setEditIntensity(note.intensity);
-    setEditSkinType(note.skinType); setEditText(note.notes);
+  function startEditSession(session: TreatmentSession) {
+    setEditingSessionId(session.id);
+    setEditForm({
+      zone: session.zone,
+      date: session.date,
+      spotSize: session.spotSize,
+      fluence: session.fluence,
+      pulseDuration: session.pulseDuration,
+      coolingLevel: session.coolingLevel,
+      skinType: session.skinType,
+      endpointObservation: session.endpointObservation,
+      adverseEffects: session.adverseEffects,
+      comments: session.comments,
+    });
   }
 
-  function handleSaveEditNote(e: FormEvent) {
+  function handleSaveEditSession(e: FormEvent) {
     e.preventDefault();
-    if (!selectedPatientId || !editingNoteId || !editZone) return;
-    const notes = getTreatmentNotes(selectedPatientId);
-    const updated = notes.map((n) => n.id === editingNoteId
-      ? { ...n, zone: sanitize(editZone), intensity: sanitize(editIntensity), skinType: editSkinType, notes: sanitize(editText) }
-      : n,
+    if (!selectedPatientId || !editingSessionId || !editForm.zone) return;
+    const sessions = getPatientSessions(selectedPatientId);
+    const updated = sessions.map((s) =>
+      s.id === editingSessionId
+        ? {
+            ...s,
+            zone: sanitize(editForm.zone),
+            date: editForm.date,
+            spotSize: sanitize(editForm.spotSize),
+            fluence: sanitize(editForm.fluence),
+            pulseDuration: sanitize(editForm.pulseDuration),
+            coolingLevel: sanitize(editForm.coolingLevel),
+            endpointObservation: sanitize(editForm.endpointObservation),
+            adverseEffects: sanitize(editForm.adverseEffects),
+            comments: sanitize(editForm.comments),
+            skinType: editForm.skinType,
+            updatedAt: new Date().toISOString(),
+          }
+        : s,
     );
-    saveTreatmentNotes(selectedPatientId, updated);
-    setEditingNoteId(null);
-    setNotesVersion((v) => v + 1);
+    savePatientSessions(selectedPatientId, updated);
+    setEditingSessionId(null);
+    setSessionsVersion((v) => v + 1);
+    toast.success('Séance modifiée.');
   }
 
-  function handleDeleteNote(noteId: string) {
+  function handleDeleteSession(sessionId: string) {
     if (!selectedPatientId) return;
-    const notes = getTreatmentNotes(selectedPatientId).filter((n) => n.id !== noteId);
-    saveTreatmentNotes(selectedPatientId, notes);
-    setNotesVersion((v) => v + 1);
+    const sessions = getPatientSessions(selectedPatientId).filter((s) => s.id !== sessionId);
+    savePatientSessions(selectedPatientId, sessions);
+    setSessionsVersion((v) => v + 1);
   }
 
   const inputClasses = 'w-full rounded-lg border border-rose-soft bg-white px-3 py-2 text-sm text-text placeholder:text-text-light/50 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary transition-colors';
@@ -205,7 +572,7 @@ export default function PrestataireDashboard() {
     return <section className="page-enter flex items-center justify-center px-4 py-24"><p className="text-text-light">Chargement...</p></section>;
   }
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  const todayStr = formatDateKey(new Date());
   const todayCount = appointments.filter((a) => a.date === todayStr && a.status === 'confirmed').length;
   const confirmedCount = appointments.filter((a) => a.status === 'confirmed').length;
   const cancelledRecent = appointments.filter((a) => a.status === 'cancelled').length;
@@ -268,7 +635,7 @@ export default function PrestataireDashboard() {
           ))}
         </div>
 
-        {/* ═══ TAB: Rendez-vous ═══ */}
+        {/* TAB: Rendez-vous */}
         {tab === 'appointments' && (
           <div className="mt-6">
             <div className="flex flex-wrap items-center gap-3">
@@ -277,9 +644,12 @@ export default function PrestataireDashboard() {
               <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value as AppointmentStatus | 'all')}
                 className="rounded-lg border border-rose-soft bg-white px-3 py-2 text-sm text-text">
                 <option value="all">Tous les statuts</option>
+                <option value="pending">En attente</option>
                 <option value="confirmed">Confirmés</option>
                 <option value="cancelled">Annulés</option>
+                <option value="rescheduled">Déplacés</option>
                 <option value="completed">Terminés</option>
+                <option value="no_show">Absents</option>
               </select>
               <input type="date" value={filterDate} onChange={(e) => setFilterDate(e.target.value)}
                 className="rounded-lg border border-rose-soft bg-white px-3 py-2 text-sm text-text" />
@@ -314,7 +684,7 @@ export default function PrestataireDashboard() {
                           <td className="px-3 py-3 font-medium">{appt.profile_name}</td>
                           <td className="px-3 py-3">{appt.is_first_consultation ? 'Consultation' : 'Séance'}</td>
                           <td className="px-3 py-3 text-text-light">{service?.name ?? '—'}</td>
-                          <td className="px-3 py-3">{new Date(appt.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })}</td>
+                          <td className="px-3 py-3">{formatDateDisplay(appt.date, { day: 'numeric', month: 'short' })}</td>
                           <td className="px-3 py-3">{appt.time}</td>
                           <td className="px-3 py-3">
                             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${status.classes}`}>{status.label}</span>
@@ -341,7 +711,7 @@ export default function PrestataireDashboard() {
           </div>
         )}
 
-        {/* ═══ TAB: Patients ═══ */}
+        {/* TAB: Patients */}
         {tab === 'patients' && (
           <div className="mt-6">
             {!selectedPatient ? (
@@ -368,7 +738,7 @@ export default function PrestataireDashboard() {
             ) : (
               <div className="flex flex-col gap-8">
                 <div className="flex items-center gap-4">
-                  <button type="button" onClick={() => { setSelectedPatientId(null); setEditingNoteId(null); }}
+                  <button type="button" onClick={() => { setSelectedPatientId(null); setEditingSessionId(null); }}
                     className="rounded-lg border border-rose-soft px-3 py-1.5 text-sm text-text-light hover:bg-nude">&larr; Retour</button>
                   <h2 className="font-serif text-lg font-semibold text-text">{selectedPatient.first_name} {selectedPatient.last_name}</h2>
                 </div>
@@ -378,6 +748,20 @@ export default function PrestataireDashboard() {
                   <h3 className="text-sm font-semibold text-text">Informations</h3>
                   <div className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
                     <p><span className="text-text-light">Tél :</span> {selectedPatient.phone || '—'}</p>
+                  </div>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    <Link
+                      to={`/prestataire/intake?patient=${selectedPatientId}`}
+                      className="rounded-full bg-primary/10 px-5 py-2 text-xs font-semibold text-primary-dark transition-all duration-300 hover:bg-primary hover:text-white"
+                    >
+                      Formulaire d&apos;admission
+                    </Link>
+                    <Link
+                      to={`/prestataire/consent?patient=${selectedPatientId}`}
+                      className="rounded-full bg-primary/10 px-5 py-2 text-xs font-semibold text-primary-dark transition-all duration-300 hover:bg-primary hover:text-white"
+                    >
+                      Consentement éclairé
+                    </Link>
                   </div>
                 </div>
 
@@ -395,7 +779,7 @@ export default function PrestataireDashboard() {
                           <div key={a.id} className="flex items-center justify-between rounded-lg bg-nude px-4 py-2.5 text-sm">
                             <div>
                               <span className="font-medium text-text">{a.is_first_consultation ? 'Consultation' : (service?.name ?? '—')}</span>
-                              <span className="ml-2 text-text-light">{new Date(a.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à {a.time}</span>
+                              <span className="ml-2 text-text-light">{formatDateDisplay(a.date, { day: 'numeric', month: 'short' })} à {a.time}</span>
                             </div>
                             <span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${status.classes}`}>{status.label}</span>
                           </div>
@@ -405,79 +789,60 @@ export default function PrestataireDashboard() {
                   )}
                 </div>
 
-                {/* Treatment notes (feuille de suivi) */}
+                {/* Treatment sessions (feuille de suivi) */}
                 <div className="rounded-xl border border-rose-soft bg-white p-5">
                   <h3 className="text-sm font-semibold text-text">Feuille de suivi</h3>
 
-                  {patientNotes.length > 0 && (
-                    <div className="mt-3 flex flex-col gap-2">
-                      {patientNotes.map((note) => (
-                        <div key={note.id} className="rounded-lg bg-nude px-4 py-3 text-sm">
-                          {editingNoteId === note.id ? (
-                            <form onSubmit={handleSaveEditNote} className="flex flex-col gap-2">
-                              <div className="grid gap-2 sm:grid-cols-3">
-                                <select required className={inputClasses} value={editZone} onChange={(e) => setEditZone(e.target.value)}>
-                                  <option value="">Zone traitée</option>
-                                  {zoneNames.map((z) => <option key={z} value={z}>{z}</option>)}
-                                </select>
-                                <input type="text" placeholder="Intensité (J/cm²)" className={inputClasses} value={editIntensity} onChange={(e) => setEditIntensity(e.target.value)} />
-                                <select className={inputClasses} value={editSkinType} onChange={(e) => setEditSkinType(e.target.value as SkinType)}>
-                                  {SKIN_TYPES.map((st) => <option key={st} value={st}>Phototype {st}</option>)}
-                                </select>
-                              </div>
-                              <textarea rows={2} placeholder="Notes, observations..." className={inputClasses} value={editText} onChange={(e) => setEditText(e.target.value)} />
-                              <div className="flex gap-2">
-                                <button type="submit" className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark">Enregistrer</button>
-                                <button type="button" onClick={() => setEditingNoteId(null)} className="rounded-full border border-rose-soft px-4 py-1.5 text-xs text-text-light hover:bg-white">Annuler</button>
-                              </div>
-                            </form>
-                          ) : (
-                            <>
-                              <div className="flex items-center justify-between">
-                                <span className="font-medium text-text">{note.zone}</span>
-                                <div className="flex items-center gap-2">
-                                  <span className="text-xs text-text-light">{note.date}</span>
-                                  <button type="button" onClick={() => startEditNote(note)} className="rounded px-1.5 py-0.5 text-xs text-primary-dark hover:bg-primary-light/30">Modifier</button>
-                                  <button type="button" onClick={() => handleDeleteNote(note.id)} className="rounded px-1.5 py-0.5 text-xs text-red-500 hover:bg-red-50">Supprimer</button>
-                                </div>
-                              </div>
-                              <div className="mt-1 flex gap-3 text-xs text-text-light">
-                                <span>Intensité : {note.intensity || '—'}</span>
-                                <span>Phototype : {note.skinType}</span>
-                              </div>
-                              {note.notes && <p className="mt-1 text-xs text-text-light">{note.notes}</p>}
-                            </>
-                          )}
-                        </div>
+                  {/* Existing sessions as accordion cards */}
+                  {patientSessions.length > 0 && (
+                    <div className="mt-4 flex flex-col gap-3">
+                      {patientSessions.map((session) => (
+                        editingSessionId === session.id ? (
+                          <div key={session.id} className="rounded-xl border border-primary-light bg-nude p-4">
+                            <p className="mb-3 text-sm font-medium text-text">Modifier la séance</p>
+                            <SessionForm
+                              state={editForm}
+                              onChange={(patch) => setEditForm((prev) => ({ ...prev, ...patch }))}
+                              onSubmit={handleSaveEditSession}
+                              onCancel={() => setEditingSessionId(null)}
+                              submitLabel="Enregistrer"
+                              zoneNames={zoneNames}
+                              inputClasses={inputClasses}
+                            />
+                          </div>
+                        ) : (
+                          <SessionCard
+                            key={session.id}
+                            session={session}
+                            isOpen={openSessionIds.has(session.id)}
+                            onToggle={() => toggleSessionOpen(session.id)}
+                            onEdit={() => startEditSession(session)}
+                            onDelete={() => handleDeleteSession(session.id)}
+                          />
+                        )
                       ))}
                     </div>
                   )}
 
-                  {/* Add note form */}
-                  <form onSubmit={handleAddNote} className="mt-4 rounded-lg border border-rose-soft bg-nude p-4">
-                    <p className="mb-3 text-sm font-medium text-text">Nouvelle note de traitement</p>
-                    <div className="flex flex-col gap-3">
-                      <div className="grid gap-3 sm:grid-cols-3">
-                        <select required className={inputClasses} value={noteZone} onChange={(e) => setNoteZone(e.target.value)}>
-                          <option value="">Zone traitée</option>
-                          {zoneNames.map((z) => <option key={z} value={z}>{z}</option>)}
-                        </select>
-                        <input type="text" placeholder="Intensité (J/cm²)" className={inputClasses} value={noteIntensity} onChange={(e) => setNoteIntensity(e.target.value)} />
-                        <select className={inputClasses} value={noteSkinType} onChange={(e) => setNoteSkinType(e.target.value as SkinType)}>
-                          {SKIN_TYPES.map((st) => <option key={st} value={st}>Phototype {st}</option>)}
-                        </select>
-                      </div>
-                      <textarea rows={2} placeholder="Notes, observations..." className={inputClasses} value={noteText} onChange={(e) => setNoteText(e.target.value)} />
-                      <button type="submit" className="self-start rounded-full bg-primary px-5 py-2 text-sm font-semibold text-white hover:bg-primary-dark">Ajouter</button>
-                    </div>
-                  </form>
+                  {/* Add session form */}
+                  <div className="mt-5 rounded-xl border border-rose-soft bg-nude p-4 sm:p-5">
+                    <p className="mb-4 text-sm font-medium text-text">Nouvelle séance de traitement</p>
+                    <SessionForm
+                      state={sessionForm}
+                      onChange={(patch) => setSessionForm((prev) => ({ ...prev, ...patch }))}
+                      onSubmit={handleAddSession}
+                      submitLabel="Ajouter"
+                      zoneNames={zoneNames}
+                      inputClasses={inputClasses}
+                    />
+                  </div>
                 </div>
               </div>
             )}
           </div>
         )}
 
-        {/* ═══ TAB: Notifications ═══ */}
+        {/* TAB: Notifications */}
         {tab === 'notifications' && (
           <div className="mt-6">
             {notifications.length === 0 ? (
@@ -501,7 +866,7 @@ export default function PrestataireDashboard() {
                       </span>
                       <span>{n.message}</span>
                       <span className="text-xs text-text-light">
-                        {new Date(n.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })} à {n.time}
+                        {formatDateDisplay(n.date, { day: 'numeric', month: 'short' })} à {n.time}
                       </span>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CONFIG[n.status].classes}`}>
