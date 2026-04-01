@@ -10,7 +10,7 @@ function sanitize(value: string): string {
 }
 
 export default function Account() {
-  const { isAuthenticated, isLoading, profile, dbUser, logout, refreshProfile } = useAuth();
+  const { isAuthenticated, isLoading, profile, dbUser, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -83,27 +83,20 @@ export default function Account() {
               {profile.first_name} {profile.last_name} — {dbUser?.email}
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-col gap-2 sm:flex-row">
             <button
               type="button"
               onClick={() => setIsEditing(true)}
-              className="rounded-full border border-primary-light px-5 py-2.5 text-sm font-medium text-primary-dark transition-all duration-300 hover:bg-nude hover:shadow-sm"
+              className="w-full rounded-full border border-primary-light px-5 py-2.5 text-sm font-medium text-primary-dark transition-all duration-300 hover:bg-nude hover:shadow-sm sm:w-auto"
             >
               Modifier
             </button>
             <Link
               to="/mes-rdv"
-              className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-primary-dark"
+              className="w-full rounded-full bg-primary px-5 py-2.5 text-center text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-primary-dark sm:w-auto"
             >
               Mes rendez-vous
             </Link>
-            <button
-              type="button"
-              onClick={() => { logout(); navigate('/'); }}
-              className="rounded-full border border-primary px-5 py-2.5 text-sm font-medium text-primary transition-all duration-300 hover:bg-primary hover:text-white"
-            >
-              Déconnexion
-            </button>
           </div>
         </div>
 

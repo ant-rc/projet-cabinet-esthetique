@@ -98,13 +98,13 @@ export default function Login() {
           Connexion
         </h1>
 
-        <div className="mt-8 flex overflow-hidden rounded-xl border border-rose-soft">
+        <div className="mt-8 flex gap-3">
           <button
             type="button"
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 ${
+            className={`flex-1 rounded-xl px-4 py-3.5 text-sm font-semibold shadow-sm transition-all duration-300 ${
               activeTab === 'login'
-                ? 'bg-primary text-white'
-                : 'bg-white text-text-light hover:bg-nude'
+                ? 'bg-primary text-white shadow-md'
+                : 'border border-rose-soft bg-white text-text-light hover:border-primary-light'
             }`}
             onClick={() => setActiveTab('login')}
           >
@@ -112,10 +112,10 @@ export default function Login() {
           </button>
           <button
             type="button"
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-all duration-300 ${
+            className={`flex-1 rounded-xl px-4 py-3.5 text-sm font-semibold shadow-sm transition-all duration-300 ${
               activeTab === 'register'
-                ? 'bg-primary text-white'
-                : 'bg-white text-text-light hover:bg-nude'
+                ? 'bg-primary text-white shadow-md'
+                : 'border border-rose-soft bg-white text-text-light hover:border-primary-light'
             }`}
             onClick={() => setActiveTab('register')}
           >

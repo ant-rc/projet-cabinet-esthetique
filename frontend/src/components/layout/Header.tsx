@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/context/AuthContext';
 
 export default function Header() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [hasScrolled, setHasScrolled] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
   const location = useLocation();
-  const { isAuthenticated, role } = useAuth();
+  const navigate = useNavigate();
+  const { isAuthenticated, role, logout } = useAuth();
 
   useEffect(() => {
     function handleScroll() {
@@ -123,8 +125,58 @@ export default function Header() {
           >
             Prendre rendez-vous
           </Link>
+          {isAuthenticated && (
+            <button
+              type="button"
+              onClick={() => setShowLogoutModal(true)}
+              className="mt-2 rounded-full border border-primary px-5 py-2.5 text-center text-sm font-medium text-primary transition-all duration-300 hover:bg-primary hover:text-white"
+            >
+              Se d&eacute;connecter
+            </button>
+          )}
         </nav>
       </div>
+
+      {/* Logout confirmation modal */}
+      {showLogoutModal && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={() => setShowLogoutModal(false)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setShowLogoutModal(false); }}
+          role="presentation"
+        >
+          <div
+            className="mx-4 w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="logout-modal-title"
+          >
+            <h2 id="logout-modal-title" className="font-serif text-xl font-bold text-text">
+              D&eacute;connexion
+            </h2>
+            <p className="mt-3 text-sm text-text-light">
+              &Ecirc;tes-vous s&ucirc;r(e) de vouloir vous d&eacute;connecter&nbsp;?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setShowLogoutModal(false)}
+                className="flex-1 rounded-full border border-rose-soft px-5 py-2.5 text-sm font-medium text-text-light transition-all duration-300 hover:bg-nude"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => { logout(); setShowLogoutModal(false); navigate('/'); }}
+                className="flex-1 rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-primary-dark"
+              >
+                Se d&eacute;connecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </header>
   );
 }

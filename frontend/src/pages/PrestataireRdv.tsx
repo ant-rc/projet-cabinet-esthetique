@@ -4,12 +4,16 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getServiceById } from '@/data/pricing';
+import { formatDateDisplay } from '@/utils/date';
 import type { DbAppointment, DbProfile, AppointmentStatus } from '@/types';
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; classes: string }> = {
+  pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-700' },
   confirmed: { label: 'Confirmé', classes: 'bg-green-100 text-green-700' },
   cancelled: { label: 'Annulé', classes: 'bg-red-100 text-red-700' },
+  rescheduled: { label: 'Déplacé', classes: 'bg-purple-100 text-purple-700' },
   completed: { label: 'Terminé', classes: 'bg-blue-100 text-blue-700' },
+  no_show: { label: 'Absent', classes: 'bg-gray-100 text-gray-700' },
 };
 
 interface AppointmentRow extends DbAppointment {
@@ -136,9 +140,12 @@ export default function PrestataireRdv() {
             className="rounded-lg border border-rose-soft bg-white px-3 py-2 text-sm text-text"
           >
             <option value="all">Tous les statuts</option>
+            <option value="pending">En attente</option>
             <option value="confirmed">Confirmés</option>
             <option value="cancelled">Annulés</option>
+            <option value="rescheduled">Déplacés</option>
             <option value="completed">Terminés</option>
+            <option value="no_show">Absents</option>
           </select>
           <input
             type="date"
@@ -189,7 +196,7 @@ export default function PrestataireRdv() {
                       <td className="px-3 py-3">{appt.is_first_consultation ? 'Consultation' : 'Séance'}</td>
                       <td className="px-3 py-3 text-text-light">{service?.name ?? '—'}</td>
                       <td className="px-3 py-3">
-                        {new Date(appt.date).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' })}
+                        {formatDateDisplay(appt.date, { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-3 py-3">{appt.time}</td>
                       <td className="px-3 py-3">

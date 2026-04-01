@@ -115,9 +115,9 @@ export const availabilityData: AvailabilitySlot[] = [
   { dayOfWeek: 0, startTime: '09:30', endTime: '14:00' }, // Dimanche
 ];
 
-export function generateTimeSlots(date: string): { time: string; available: boolean }[] {
-  const d = new Date(date);
-  const dayOfWeek = d.getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+export function generateTimeSlots(date: string, durationMinutes: number = 30): { time: string; available: boolean }[] {
+  const [y, m, d] = date.split('-').map(Number);
+  const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
   const slot = availabilityData.find((a) => a.dayOfWeek === dayOfWeek);
   if (!slot) return []; // Closed (Monday)
@@ -128,10 +128,11 @@ export function generateTimeSlots(date: string): { time: string; available: bool
   const endMinutes = endH * 60 + endM;
 
   const slots: { time: string; available: boolean }[] = [];
+  const step = 15; // 15-minute step between start times
 
-  for (let m = startMinutes; m < endMinutes; m += 30) {
-    const h = Math.floor(m / 60);
-    const min = m % 60;
+  for (let mins = startMinutes; mins + durationMinutes <= endMinutes; mins += step) {
+    const h = Math.floor(mins / 60);
+    const min = mins % 60;
     const time = `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
     slots.push({ time, available: true });
   }

@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { generateTimeSlots } from '@/data/pricing';
+import { formatDateKey, formatDateDisplay } from '@/utils/date';
 import type { TimeSlotData } from '@/types';
 
 interface BookingCalendarProps {
   selectedDate: string;
   selectedTime: string;
+  durationMinutes: number;
   onSelectDate: (date: string) => void;
   onSelectTime: (time: string) => void;
 }
@@ -24,10 +26,6 @@ function getWeekDays(startDate: Date): Date[] {
   return days;
 }
 
-function formatDateKey(d: Date): string {
-  return d.toISOString().split('T')[0];
-}
-
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const MONTH_NAMES = [
   'janvier', 'février', 'mars', 'avril', 'mai', 'juin',
@@ -37,6 +35,7 @@ const MONTH_NAMES = [
 export default function BookingCalendar({
   selectedDate,
   selectedTime,
+  durationMinutes,
   onSelectDate,
   onSelectTime,
 }: BookingCalendarProps) {
@@ -58,8 +57,8 @@ export default function BookingCalendar({
 
   const slots: TimeSlotData[] = useMemo(() => {
     if (!selectedDate) return [];
-    return generateTimeSlots(selectedDate);
-  }, [selectedDate]);
+    return generateTimeSlots(selectedDate, durationMinutes);
+  }, [selectedDate, durationMinutes]);
 
   const morningSlots = slots.filter((s) => {
     const hour = parseInt(s.time.split(':')[0], 10);
@@ -146,7 +145,7 @@ export default function BookingCalendar({
         <div className="step-enter flex flex-col gap-5">
           <div className="flex items-center justify-between">
             <p className="text-sm font-medium text-text">
-              {new Date(selectedDate).toLocaleDateString('fr-FR', {
+              {formatDateDisplay(selectedDate, {
                 weekday: 'long',
                 day: 'numeric',
                 month: 'long',

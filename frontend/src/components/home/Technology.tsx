@@ -46,7 +46,7 @@ export default function Technology() {
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-text-light">
                 Laser médical haut de gamme, référence mondiale en épilation définitive.
-                Grâce à sa <strong className="text-text">double technologie Alexandrite &amp; Nd:yav</strong>,
+                Grâce à sa <strong className="text-text">double technologie Alexandrite &amp; Nd:yak</strong>,
                 il traite efficacement <strong className="text-text">tous les types de peau</strong>,
                 même les plus sensibles, avec des résultats rapides et durables.
               </p>
