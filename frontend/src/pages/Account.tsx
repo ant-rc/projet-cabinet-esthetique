@@ -10,7 +10,7 @@ function sanitize(value: string): string {
 }
 
 export default function Account() {
-  const { isAuthenticated, isLoading, profile, dbUser, refreshProfile } = useAuth();
+  const { isAuthenticated, isLoading, profile, dbUser, logout, refreshProfile } = useAuth();
   const navigate = useNavigate();
 
   const [isEditing, setIsEditing] = useState(false);
@@ -97,6 +97,13 @@ export default function Account() {
             >
               Mes rendez-vous
             </Link>
+            <button
+              type="button"
+              onClick={() => { logout(); navigate('/'); }}
+              className="hidden rounded-full border border-primary px-5 py-2.5 text-sm font-medium text-primary transition-all duration-300 hover:bg-primary hover:text-white sm:block"
+            >
+              Déconnexion
+            </button>
           </div>
         </div>
 
