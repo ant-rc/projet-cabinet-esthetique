@@ -8,6 +8,7 @@ import {
   type MedicalIntakeForm,
   type MedicalHistoryFlag,
 } from '@/types/medical';
+import { sanitize } from '@/utils/sanitize';
 
 const FITZPATRICK_OPTIONS: { value: FitzpatrickType; label: string; description: string }[] = [
   { value: 'I', label: 'Type I', description: 'Peau très claire, brûle toujours, ne bronze jamais' },
@@ -20,10 +21,6 @@ const FITZPATRICK_OPTIONS: { value: FitzpatrickType; label: string; description:
 
 const FORM_VERSION = '1.0.0';
 
-function sanitize(value: string): string {
-  return value.replace(/[<>]/g, '').trim();
-}
-
 function getStorageKey(patientId: string): string {
   return `aa_laser_intake_${patientId}`;
 }
@@ -31,7 +28,11 @@ function getStorageKey(patientId: string): string {
 function loadForm(patientId: string): MedicalIntakeForm | null {
   const stored = localStorage.getItem(getStorageKey(patientId));
   if (!stored) return null;
-  return JSON.parse(stored) as MedicalIntakeForm;
+  try {
+    return JSON.parse(stored) as MedicalIntakeForm;
+  } catch {
+    return null;
+  }
 }
 
 function saveForm(patientId: string, data: MedicalIntakeForm): void {

@@ -4,10 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-
-function sanitize(value: string): string {
-  return value.replace(/[<>]/g, '').trim();
-}
+import { sanitize } from '@/utils/sanitize';
 
 export default function Account() {
   const { isAuthenticated, isLoading, profile, dbUser, logout, refreshProfile } = useAuth();

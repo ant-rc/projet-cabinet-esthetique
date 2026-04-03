@@ -78,7 +78,8 @@ export default function MesRdv() {
     const { error } = await supabase
       .from('appointments')
       .update({ status: 'cancelled' })
-      .eq('id', cancelConfirmId);
+      .eq('id', cancelConfirmId)
+      .eq('user_id', session!.user.id);
 
     if (error) {
       toast.error('Erreur lors de l\'annulation.');
@@ -108,7 +109,8 @@ export default function MesRdv() {
     const { error } = await supabase
       .from('appointments')
       .update({ date: newDate, time: newTime })
-      .eq('id', rescheduleId);
+      .eq('id', rescheduleId)
+      .eq('user_id', session!.user.id);
 
     if (error) {
       toast.error('Erreur lors du déplacement.');

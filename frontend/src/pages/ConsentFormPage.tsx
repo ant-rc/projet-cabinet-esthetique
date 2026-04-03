@@ -4,12 +4,9 @@ import { useSearchParams, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { CONSENT_LEGAL_TEXT, type ConsentForm } from '@/types/medical';
 import { servicesData } from '@/data/pricing';
+import { sanitize } from '@/utils/sanitize';
 
 const FORM_VERSION = '1.0.0';
-
-function sanitize(value: string): string {
-  return value.replace(/[<>]/g, '').trim();
-}
 
 function getStorageKey(patientId: string): string {
   return `aa_laser_consent_${patientId}`;
@@ -18,7 +15,11 @@ function getStorageKey(patientId: string): string {
 function loadConsent(patientId: string): ConsentForm | null {
   const stored = localStorage.getItem(getStorageKey(patientId));
   if (!stored) return null;
-  return JSON.parse(stored) as ConsentForm;
+  try {
+    return JSON.parse(stored) as ConsentForm;
+  } catch {
+    return null;
+  }
 }
 
 function saveConsent(patientId: string, data: ConsentForm): void {

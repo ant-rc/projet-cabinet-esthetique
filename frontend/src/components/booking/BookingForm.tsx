@@ -10,6 +10,7 @@ import { calculateTotalPrice, calculateTotalDuration, formatDuration } from '@/u
 import { formatDateDisplay } from '@/utils/date';
 import type { Gender, ServiceCategory, BookingMode } from '@/types';
 import BookingCalendar from '@/components/booking/BookingCalendar';
+import { sanitize } from '@/utils/sanitize';
 
 type Step = 'gender' | 'service' | 'datetime' | 'info' | 'confirm';
 
@@ -23,10 +24,6 @@ const ALL_STEPS: { key: Step; label: string }[] = [
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const PHONE_REGEX = /^(?:(?:\+|00)33[\s.-]?|0)[1-9](?:[\s.-]?\d{2}){4}$/;
-
-function sanitize(value: string): string {
-  return value.replace(/[<>]/g, '').trim();
-}
 
 export default function BookingForm() {
   const { isAuthenticated, session } = useAuth();

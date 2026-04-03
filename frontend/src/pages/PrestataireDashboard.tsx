@@ -8,6 +8,7 @@ import { getServiceById, servicesData } from '@/data/pricing';
 import { formatDateKey, formatDateDisplay } from '@/utils/date';
 import type { DbAppointment, DbProfile, AppointmentStatus } from '@/types';
 import type { FitzpatrickType, TreatmentSession } from '@/types/medical';
+import { sanitize } from '@/utils/sanitize';
 
 const STATUS_CONFIG: Record<AppointmentStatus, { label: string; classes: string }> = {
   pending: { label: 'En attente', classes: 'bg-amber-100 text-amber-700' },
@@ -53,15 +54,25 @@ function migrateLegacyNote(note: Record<string, unknown>): TreatmentSession {
 
 function getPatientSessions(userId: string): TreatmentSession[] {
   const newData = localStorage.getItem(`aa_laser_sessions_${userId}`);
-  if (newData) return JSON.parse(newData) as TreatmentSession[];
+  if (newData) {
+    try {
+      return JSON.parse(newData) as TreatmentSession[];
+    } catch {
+      return [];
+    }
+  }
 
   // Fallback: migrate old notes
   const oldData = localStorage.getItem(`aa_laser_notes_${userId}`);
   if (oldData) {
-    const oldNotes = JSON.parse(oldData) as Record<string, unknown>[];
-    const migrated = oldNotes.map(migrateLegacyNote);
-    localStorage.setItem(`aa_laser_sessions_${userId}`, JSON.stringify(migrated));
-    return migrated;
+    try {
+      const oldNotes = JSON.parse(oldData) as Record<string, unknown>[];
+      const migrated = oldNotes.map(migrateLegacyNote);
+      localStorage.setItem(`aa_laser_sessions_${userId}`, JSON.stringify(migrated));
+      return migrated;
+    } catch {
+      return [];
+    }
   }
 
   return [];
@@ -69,10 +80,6 @@ function getPatientSessions(userId: string): TreatmentSession[] {
 
 function savePatientSessions(userId: string, sessions: TreatmentSession[]): void {
   localStorage.setItem(`aa_laser_sessions_${userId}`, JSON.stringify(sessions));
-}
-
-function sanitize(value: string): string {
-  return value.replace(/[<>]/g, '').trim();
 }
 
 // ─── Session form state ───
