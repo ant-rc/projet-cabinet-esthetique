@@ -1,8 +1,22 @@
+import { useState, useEffect } from 'react';
 import { centerInfo } from '@/data/pricing';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import { getCookieConsent } from '@/components/layout/CookieBanner';
 
 export default function Contact() {
   const { ref, isVisible } = useScrollReveal();
+  const [mapsConsent, setMapsConsent] = useState(() => getCookieConsent().maps);
+
+  useEffect(() => {
+    function handleConsentChange(e: Event) {
+      const detail = (e as CustomEvent).detail;
+      if (detail && typeof detail.maps === 'boolean') {
+        setMapsConsent(detail.maps);
+      }
+    }
+    window.addEventListener('cookie-consent-change', handleConsentChange);
+    return () => window.removeEventListener('cookie-consent-change', handleConsentChange);
+  }, []);
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
@@ -70,14 +84,31 @@ export default function Contact() {
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-primary-light/50 bg-nude">
-            <iframe
-              title="Localisation AA Laser Med"
-              src={centerInfo.googleMapsEmbed}
-              className="h-full min-h-[400px] w-full border-0"
-              allowFullScreen
-              loading="lazy"
-              referrerPolicy="no-referrer-when-downgrade"
-            />
+            {mapsConsent ? (
+              <iframe
+                title="Localisation AA Laser Med"
+                src={centerInfo.googleMapsEmbed}
+                className="h-full min-h-[400px] w-full border-0"
+                allowFullScreen
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                sandbox="allow-scripts allow-same-origin"
+              />
+            ) : (
+              <div className="flex min-h-[400px] flex-col items-center justify-center gap-4 p-8 text-center">
+                <p className="text-sm font-medium text-text">Carte Google Maps</p>
+                <p className="text-xs text-text-light">
+                  L&apos;affichage de la carte n&eacute;cessite votre consentement pour les cookies Google Maps.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => window.dispatchEvent(new Event('open-cookie-settings'))}
+                  className="rounded-full bg-primary px-5 py-2.5 text-xs font-semibold text-white transition-all duration-300 hover:bg-primary-dark"
+                >
+                  G&eacute;rer mes cookies
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>
