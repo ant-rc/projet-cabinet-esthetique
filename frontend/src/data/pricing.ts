@@ -183,7 +183,7 @@ export const centerInfo = {
   name: 'AA Laser Med',
   address: '49 Rue du Bois de la Garenne',
   city: '77700 Magny-le-Hongre',
-  phone: '01 23 45 67 89',
+  phone: '06 36 39 80 79',
   email: 'aalasermed@gmail.com',
   googleMapsUrl: 'https://maps.google.com/?q=49+Rue+du+Bois+de+la+Garenne+77700+Magny-le-Hongre',
   googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2632.5!2d2.7833!3d48.8667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e61b3b tried6b%3A0x0!2z!5e0!3m2!1sfr!2sfr!4v1',
