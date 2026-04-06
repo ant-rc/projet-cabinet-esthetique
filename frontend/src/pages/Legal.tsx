@@ -220,7 +220,7 @@ function Cookies() {
   );
 }
 
-const CONTENT: Record<LegalTab, () => JSX.Element> = {
+const CONTENT: Record<LegalTab, () => React.JSX.Element> = {
   mentions: MentionsLegales,
   cgu: CGU,
   cgv: CGV,

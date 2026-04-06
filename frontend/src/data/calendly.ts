@@ -7,19 +7,19 @@
 
 const CALENDLY_BASE = (import.meta.env.VITE_CALENDLY_URL as string | undefined) ?? '';
 
-/** Available durations and their Calendly event slugs */
-const DURATION_SLUGS: { maxMinutes: number; slug: string }[] = [
-  { maxMinutes: 15, slug: 'seance-15' },
-  { maxMinutes: 20, slug: 'seance-20' },
-  { maxMinutes: 25, slug: 'seance-25' },
-  { maxMinutes: 30, slug: 'seance-30' },
-  { maxMinutes: 35, slug: 'seance-35' },
-  { maxMinutes: 40, slug: 'seance-40' },
-  { maxMinutes: 45, slug: 'seance-45' },
-  { maxMinutes: 60, slug: 'seance-60' },
-  { maxMinutes: 75, slug: 'seance-75' },
-  { maxMinutes: Infinity, slug: 'seance-75' }, // fallback to longest
-];
+/*
+ * Duration-to-slug mapping (activate when multiple event types are created):
+ *
+ * { maxMinutes: 15, slug: 'seance-15' },
+ * { maxMinutes: 20, slug: 'seance-20' },
+ * { maxMinutes: 25, slug: 'seance-25' },
+ * { maxMinutes: 30, slug: 'seance-30' },
+ * { maxMinutes: 35, slug: 'seance-35' },
+ * { maxMinutes: 40, slug: 'seance-40' },
+ * { maxMinutes: 45, slug: 'seance-45' },
+ * { maxMinutes: 60, slug: 'seance-60' },
+ * { maxMinutes: 75, slug: 'seance-75' },
+ */
 
 /**
  * Get the Calendly event URL for a given total duration.
