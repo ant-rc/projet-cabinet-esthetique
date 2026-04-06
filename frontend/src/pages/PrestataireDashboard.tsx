@@ -25,7 +25,7 @@ interface AppointmentRow extends DbAppointment {
   profile_name: string;
 }
 
-type Tab = 'appointments' | 'patients' | 'notifications';
+type Tab = 'planning' | 'appointments' | 'patients' | 'notifications';
 
 // ─── Migration helper: old TreatmentNote -> TreatmentSession ───
 
@@ -378,10 +378,39 @@ export default function PrestataireDashboard() {
   const { isAuthenticated, isLoading: authLoading, role, logout } = useAuth();
   const navigate = useNavigate();
 
-  const [tab, setTab] = useState<Tab>('appointments');
+  const [tab, setTab] = useState<Tab>('planning');
   const [appointments, setAppointments] = useState<AppointmentRow[]>([]);
   const [profiles, setProfiles] = useState<DbProfile[]>([]);
   const [loading, setLoading] = useState(true);
+
+  // Calendly events
+  interface CalendlyEventItem {
+    id: string;
+    name: string;
+    status: string;
+    startTime: string;
+    endTime: string;
+    invitees: { name: string; email: string; status: string; zones: string | null; priceInfo: string | null }[];
+  }
+  const [calendlyEvents, setCalendlyEvents] = useState<CalendlyEventItem[]>([]);
+  const [calendlyLoading, setCalendlyLoading] = useState(false);
+  const [calendlyError, setCalendlyError] = useState<string | null>(null);
+
+  const fetchCalendlyEvents = useCallback(async () => {
+    setCalendlyLoading(true);
+    setCalendlyError(null);
+    try {
+      const res = await fetch('/api/calendly/events?count=20');
+      if (!res.ok) throw new Error(`Erreur ${res.status}`);
+      const data = await res.json() as { events: CalendlyEventItem[] };
+      setCalendlyEvents(data.events);
+    } catch (err) {
+      setCalendlyError('Impossible de charger les rendez-vous Calendly. Vérifiez la configuration.');
+      setCalendlyEvents([]);
+    } finally {
+      setCalendlyLoading(false);
+    }
+  }, []);
 
   // Appointments filters
   const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('all');
@@ -429,8 +458,9 @@ export default function PrestataireDashboard() {
     }
     if (isAuthenticated && role === 'prestataire') {
       void fetchAll();
+      void fetchCalendlyEvents();
     }
-  }, [authLoading, isAuthenticated, role, navigate, fetchAll]);
+  }, [authLoading, isAuthenticated, role, navigate, fetchAll, fetchCalendlyEvents]);
 
   // ─── Appointments ───
   const filtered = useMemo(() => {
@@ -625,6 +655,7 @@ export default function PrestataireDashboard() {
         {/* Tabs */}
         <div className="mt-8 flex gap-2 border-b border-rose-soft">
           {([
+            { key: 'planning' as Tab, label: 'Planning' },
             { key: 'appointments' as Tab, label: 'Rendez-vous' },
             { key: 'patients' as Tab, label: 'Patients' },
             { key: 'notifications' as Tab, label: 'Notifications' },
@@ -641,6 +672,127 @@ export default function PrestataireDashboard() {
             </button>
           ))}
         </div>
+
+        {/* TAB: Planning */}
+        {tab === 'planning' && (
+          <div className="mt-6 flex flex-col gap-6">
+            {/* Header + Calendly links */}
+            <div className="flex flex-col gap-4 rounded-2xl border border-primary-light/50 bg-gradient-to-r from-nude to-rose-soft/30 p-6 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="font-serif text-lg font-semibold text-text">Planning</h2>
+                <p className="mt-1 text-sm text-text-light">
+                  Vos prochains rendez-vous Calendly en temps réel.
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  onClick={() => { setCalendlyLoading(true); void fetchCalendlyEvents(); }}
+                  className="rounded-full border border-primary-light px-5 py-2.5 text-center text-sm font-medium text-primary-dark transition-all duration-300 hover:bg-nude"
+                >
+                  Actualiser
+                </button>
+                <a
+                  href="https://calendly.com/app/scheduled_events/user/me"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full bg-primary px-5 py-2.5 text-center text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-primary-dark"
+                >
+                  Ouvrir Calendly
+                </a>
+              </div>
+            </div>
+
+            {/* Quick stats */}
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="rounded-2xl border border-primary-light/50 bg-white p-5 text-center">
+                <p className="text-2xl font-bold text-primary-dark">{calendlyEvents.length}</p>
+                <p className="mt-1 text-xs text-text-light">RDV Calendly à venir</p>
+              </div>
+              <div className="rounded-2xl border border-primary-light/50 bg-white p-5 text-center">
+                <p className="text-2xl font-bold text-primary-dark">
+                  {calendlyEvents.filter((e) => {
+                    const d = new Date(e.startTime);
+                    const today = new Date();
+                    return d.getDate() === today.getDate() && d.getMonth() === today.getMonth() && d.getFullYear() === today.getFullYear();
+                  }).length}
+                </p>
+                <p className="mt-1 text-xs text-text-light">Aujourd&apos;hui</p>
+              </div>
+              <div className="rounded-2xl border border-primary-light/50 bg-white p-5 text-center">
+                <p className="text-2xl font-bold text-primary-dark">{profiles.length}</p>
+                <p className="mt-1 text-xs text-text-light">Patients</p>
+              </div>
+            </div>
+
+            {/* Calendly events list */}
+            <div>
+              <h3 className="text-sm font-semibold text-text">Prochains rendez-vous</h3>
+
+              {calendlyLoading ? (
+                <p className="mt-3 text-sm text-text-light">Chargement...</p>
+              ) : calendlyError ? (
+                <div className="mt-3 rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  {calendlyError}
+                </div>
+              ) : calendlyEvents.length === 0 ? (
+                <p className="mt-3 text-sm text-text-light">Aucun rendez-vous à venir.</p>
+              ) : (
+                <div className="mt-3 flex flex-col gap-3">
+                  {calendlyEvents.map((evt) => {
+                    const start = new Date(evt.startTime);
+                    const end = new Date(evt.endTime);
+                    const durationMin = Math.round((end.getTime() - start.getTime()) / 60000);
+                    const invitee = evt.invitees[0];
+                    const dateStr = start.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' });
+                    const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+
+                    return (
+                      <div key={evt.id} className="card-hover flex flex-col gap-3 rounded-2xl border border-rose-soft bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
+                        <div className="flex flex-col gap-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-text">{evt.name}</span>
+                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                              {durationMin} min
+                            </span>
+                          </div>
+                          {invitee && (
+                            <div className="flex flex-col gap-0.5">
+                              <span className="text-sm text-text-light">
+                                {invitee.name} — {invitee.email}
+                              </span>
+                              {invitee.zones && (
+                                <span className="text-xs text-primary-dark">
+                                  Zones : {invitee.zones}
+                                </span>
+                              )}
+                              {invitee.priceInfo && (
+                                <span className="text-xs text-text-light">
+                                  {invitee.priceInfo}
+                                </span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3 text-right">
+                          <div>
+                            <p className="text-sm font-semibold capitalize text-text">{dateStr}</p>
+                            <p className="text-xs text-text-light">{timeStr}</p>
+                          </div>
+                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
+                            evt.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                          }`}>
+                            {evt.status === 'active' ? 'Confirmé' : 'Annulé'}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* TAB: Rendez-vous */}
         {tab === 'appointments' && (
