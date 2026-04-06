@@ -99,38 +99,51 @@ export default function Booking() {
     }
   }, [showCalendar]);
 
-  // Listen for Calendly booking event
+  // Capture date/time from Calendly postMessage when user picks a slot
+  const selectedSlotRef = useRef<{ date: string; time: string }>({ date: '', time: '' });
+
+  useEffect(() => {
+    function handleMessage(e: MessageEvent) {
+      if (typeof e.data !== 'object' || !e.data) return;
+      const msg = e.data as { event?: string; payload?: { start_time?: string } };
+
+      // Calendly sends date_and_time_selected with the chosen slot
+      if (msg.event === 'calendly.date_and_time_selected' && msg.payload?.start_time) {
+        const start = new Date(msg.payload.start_time);
+        selectedSlotRef.current = {
+          date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
+          time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+        };
+      }
+
+      // Also try to extract from event_scheduled payload
+      if (msg.event === 'calendly.event_scheduled' && msg.payload) {
+        const payload = msg.payload as { event?: { start_time?: string } };
+        if (payload.event?.start_time) {
+          const start = new Date(payload.event.start_time);
+          selectedSlotRef.current = {
+            date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
+            time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+          };
+        }
+      }
+    }
+
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
+  // Listen for Calendly booking confirmation
   useCalendlyEventListener({
-    onEventScheduled: useCallback(async (e: { data: { payload?: { event?: { uri?: string } } } }) => {
+    onEventScheduled: useCallback(async () => {
       toast.success(
         isConsultation
           ? 'Consultation réservée ! Vérifiez votre e-mail.'
           : 'Rendez-vous confirmé ! Vérifiez votre e-mail.',
       );
 
-      // Try to fetch real date/time from Calendly event URI via our API proxy
-      let realDate = '';
-      let realTime = '';
-      const eventUri = e.data?.payload?.event?.uri;
-
-      if (eventUri) {
-        try {
-          const eventUuid = eventUri.split('/').pop();
-          const res = await fetch(`/api/calendly/events?eventId=${eventUuid}`);
-          if (res.ok) {
-            const data = await res.json();
-            if (data.event?.startTime) {
-              const start = new Date(data.event.startTime);
-              realDate = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
-              realTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
-            }
-          }
-        } catch {
-          // Fallback to today if API fails
-        }
-      }
-
-      // Fallback date/time if we couldn't fetch from Calendly
+      // Use captured date/time from postMessage, fallback to now
+      let { date: realDate, time: realTime } = selectedSlotRef.current;
       if (!realDate) {
         const now = new Date();
         realDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -164,6 +177,7 @@ export default function Booking() {
       }
 
       // Reset
+      selectedSlotRef.current = { date: '', time: '' };
       setShowCalendar(false);
       setGender(null);
       setIsConsultation(false);
