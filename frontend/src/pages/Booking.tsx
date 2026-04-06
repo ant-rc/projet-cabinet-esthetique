@@ -99,56 +99,43 @@ export default function Booking() {
     }
   }, [showCalendar]);
 
-  // Capture date/time from Calendly postMessage when user picks a slot
-  const selectedSlotRef = useRef<{ date: string; time: string }>({ date: '', time: '' });
+  const calendlyPat = (import.meta.env.VITE_CALENDLY_PAT as string | undefined) ?? '';
 
-  useEffect(() => {
-    function handleMessage(e: MessageEvent) {
-      if (typeof e.data !== 'object' || !e.data) return;
-      const msg = e.data as { event?: string; payload?: { start_time?: string } };
-
-      // Calendly sends date_and_time_selected with the chosen slot
-      if (msg.event === 'calendly.date_and_time_selected' && msg.payload?.start_time) {
-        const start = new Date(msg.payload.start_time);
-        selectedSlotRef.current = {
-          date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
-          time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-        };
-      }
-
-      // Also try to extract from event_scheduled payload
-      if (msg.event === 'calendly.event_scheduled' && msg.payload) {
-        const payload = msg.payload as { event?: { start_time?: string } };
-        if (payload.event?.start_time) {
-          const start = new Date(payload.event.start_time);
-          selectedSlotRef.current = {
-            date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
-            time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
-          };
-        }
-      }
+  // Fetch event start_time from Calendly API using event URI
+  async function fetchEventDateTime(eventUri: string): Promise<{ date: string; time: string } | null> {
+    if (!calendlyPat || !eventUri) return null;
+    try {
+      const res = await fetch(eventUri, {
+        headers: { Authorization: `Bearer ${calendlyPat}` },
+      });
+      if (!res.ok) return null;
+      const data = await res.json() as { resource?: { start_time?: string } };
+      if (!data.resource?.start_time) return null;
+      const start = new Date(data.resource.start_time);
+      return {
+        date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
+        time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+      };
+    } catch {
+      return null;
     }
-
-    window.addEventListener('message', handleMessage);
-    return () => window.removeEventListener('message', handleMessage);
-  }, []);
+  }
 
   // Listen for Calendly booking confirmation
   useCalendlyEventListener({
-    onEventScheduled: useCallback(async () => {
+    onEventScheduled: useCallback(async (e: { data: { payload?: { event?: { uri?: string } } } }) => {
       toast.success(
         isConsultation
           ? 'Consultation réservée ! Vérifiez votre e-mail.'
           : 'Rendez-vous confirmé ! Vérifiez votre e-mail.',
       );
 
-      // Use captured date/time from postMessage, fallback to now
-      let { date: realDate, time: realTime } = selectedSlotRef.current;
-      if (!realDate) {
-        const now = new Date();
-        realDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-        realTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-      }
+      // Fetch real date/time from Calendly API
+      const eventUri = e.data?.payload?.event?.uri ?? '';
+      const slot = await fetchEventDateTime(eventUri);
+
+      const realDate = slot?.date ?? (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
+      const realTime = slot?.time ?? (() => { const n = new Date(); return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; })();
 
       // Save to Supabase if authenticated
       if (isAuthenticated && session?.user) {
@@ -177,13 +164,12 @@ export default function Booking() {
       }
 
       // Reset
-      selectedSlotRef.current = { date: '', time: '' };
       setShowCalendar(false);
       setGender(null);
       setIsConsultation(false);
       setSelectedServiceIds([]);
       setSelectedCategory(null);
-    }, [isAuthenticated, session, isConsultation, selectedServiceIds, selectedServiceNames]),
+    }, [isAuthenticated, session, isConsultation, selectedServiceIds, selectedServiceNames, calendlyPat]),
   });
 
   return (
