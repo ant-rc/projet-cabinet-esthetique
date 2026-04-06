@@ -101,12 +101,41 @@ export default function Booking() {
 
   // Listen for Calendly booking event
   useCalendlyEventListener({
-    onEventScheduled: useCallback(async () => {
+    onEventScheduled: useCallback(async (e: { data: { payload?: { event?: { uri?: string } } } }) => {
       toast.success(
         isConsultation
           ? 'Consultation réservée ! Vérifiez votre e-mail.'
           : 'Rendez-vous confirmé ! Vérifiez votre e-mail.',
       );
+
+      // Try to fetch real date/time from Calendly event URI via our API proxy
+      let realDate = '';
+      let realTime = '';
+      const eventUri = e.data?.payload?.event?.uri;
+
+      if (eventUri) {
+        try {
+          const eventUuid = eventUri.split('/').pop();
+          const res = await fetch(`/api/calendly/events?eventId=${eventUuid}`);
+          if (res.ok) {
+            const data = await res.json();
+            if (data.event?.startTime) {
+              const start = new Date(data.event.startTime);
+              realDate = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`;
+              realTime = `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`;
+            }
+          }
+        } catch {
+          // Fallback to today if API fails
+        }
+      }
+
+      // Fallback date/time if we couldn't fetch from Calendly
+      if (!realDate) {
+        const now = new Date();
+        realDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+        realTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+      }
 
       // Save to Supabase if authenticated
       if (isAuthenticated && session?.user) {
@@ -114,8 +143,8 @@ export default function Booking() {
           await supabase.from('appointments').insert({
             user_id: session.user.id,
             service_id: null,
-            date: new Date().toISOString().split('T')[0],
-            time: '00:00',
+            date: realDate,
+            time: realTime,
             status: 'confirmed',
             is_first_consultation: true,
             notes: 'Booked via Calendly',
@@ -124,8 +153,8 @@ export default function Booking() {
           const inserts = selectedServiceIds.map((serviceId) => ({
             user_id: session.user.id,
             service_id: serviceId,
-            date: new Date().toISOString().split('T')[0],
-            time: '00:00',
+            date: realDate,
+            time: realTime,
             status: 'confirmed',
             is_first_consultation: false,
             notes: `Booked via Calendly — ${selectedServiceNames.join(', ')}`,
