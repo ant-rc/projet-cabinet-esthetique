@@ -45,7 +45,7 @@ export const servicesData: DbService[] = [
   { id: '550e8400-e29b-41d4-a716-446655440108', name: 'Dos haut', category: 'corps', gender: 'male', price: 140, duration: 35 },
   { id: '550e8400-e29b-41d4-a716-446655440109', name: 'Dos entier', category: 'corps', gender: 'male', price: 200, duration: 50 },
   { id: '550e8400-e29b-41d4-a716-446655440110', name: 'Fesses', category: 'corps', gender: 'male', price: 110, duration: 30 },
-  { id: '550e8400-e29b-41d4-a716-446655440111', name: 'Sillon inter-fessier (SIF)', category: 'corps', gender: 'male', price: 70, duration: 15 },
+  { id: '550e8400-e29b-41d4-a716-446655440111', name: 'Sillon inter-fessier (SIF)', category: 'corps', gender: 'male', price: 50, duration: 15 },
   { id: '550e8400-e29b-41d4-a716-446655440112', name: 'Torse', category: 'corps', gender: 'male', price: 120, duration: 30 },
   { id: '550e8400-e29b-41d4-a716-446655440113', name: 'Ventre', category: 'corps', gender: 'male', price: 110, duration: 30 },
   // ── Homme — Bras ──
@@ -56,9 +56,9 @@ export const servicesData: DbService[] = [
   { id: '550e8400-e29b-41d4-a716-446655440118', name: 'Épaules', category: 'bras', gender: 'male', price: 80, duration: 20 },
   { id: '550e8400-e29b-41d4-a716-446655440119', name: 'Mains', category: 'bras', gender: 'male', price: 40, duration: 10 },
   // ── Homme — Jambes ──
-  { id: '550e8400-e29b-41d4-a716-446655440120', name: 'Cuisses', category: 'jambes', gender: 'male', price: 200, duration: 45 },
-  { id: '550e8400-e29b-41d4-a716-446655440121', name: 'Demi-jambes', category: 'jambes', gender: 'male', price: 180, duration: 40 },
-  { id: '550e8400-e29b-41d4-a716-446655440122', name: 'Jambes complètes', category: 'jambes', gender: 'male', price: 370, duration: 75 },
+  { id: '550e8400-e29b-41d4-a716-446655440120', name: 'Cuisses', category: 'jambes', gender: 'male', price: 180, duration: 45 },
+  { id: '550e8400-e29b-41d4-a716-446655440121', name: 'Demi-jambes', category: 'jambes', gender: 'male', price: 150, duration: 40 },
+  { id: '550e8400-e29b-41d4-a716-446655440122', name: 'Jambes complètes', category: 'jambes', gender: 'male', price: 320, duration: 75 },
   { id: '550e8400-e29b-41d4-a716-446655440123', name: 'Pieds', category: 'jambes', gender: 'male', price: 50, duration: 10 },
 ];
 
