@@ -483,26 +483,56 @@ export default function PrestataireDashboard() {
     toast.success('Statut mis à jour.');
   }
 
-  // ─── Open patient file from Calendly event invitee email ───
-  function openPatientFromEmail(email: string) {
-    const match = profiles.find((p) => {
-      const user = appointments.find((a) => a.user_id === p.user_id);
-      return user && p.user_id; // profile exists
-    });
-    // Match by email via users list (need to fetch users too)
-    const normalizedEmail = email.trim().toLowerCase();
-    const foundAppt = appointments.find((a) => a.notes?.toLowerCase().includes(normalizedEmail));
-    if (foundAppt) {
-      setSelectedPatientId(foundAppt.user_id);
-      setTab('patients');
-      return;
+  // ─── Open patient file from Calendly event invitee ───
+  async function openPatientFromInvitee(invitee: { name: string; email: string }) {
+    const normalizedEmail = invitee.email.trim().toLowerCase();
+
+    // 1. Try to find an existing user by email in Supabase via Edge Function
+    // First: look for a profile whose user has this email — we need to fetch users
+    try {
+      const { data: users } = await supabase
+        .from('users')
+        .select('id, email')
+        .eq('email', normalizedEmail)
+        .limit(1);
+
+      if (users && users.length > 0) {
+        setSelectedPatientId(users[0].id);
+        setTab('patients');
+        return;
+      }
+    } catch {
+      // fall through to creation
     }
-    if (match) {
-      setSelectedPatientId(match.user_id);
+
+    // 2. No existing user — create patient auto via Edge Function
+    const [firstName, ...rest] = invitee.name.trim().split(/\s+/);
+    const lastName = rest.join(' ') || '—';
+
+    toast.info('Création de la fiche patient...');
+    try {
+      const { data, error } = await supabase.functions.invoke('create-patient', {
+        method: 'POST',
+        body: { email: normalizedEmail, firstName, lastName },
+      });
+      if (error) throw error;
+      const result = data as { userId?: string; created?: boolean; error?: string };
+      if (result.error) throw new Error(result.error);
+      if (!result.userId) throw new Error('No user ID returned');
+
+      toast.success(
+        result.created
+          ? 'Fiche patient créée. Un e-mail de configuration lui a été envoyé.'
+          : 'Fiche patient trouvée.',
+      );
+
+      // Refresh profiles then open the patient file
+      await fetchAll();
+      setSelectedPatientId(result.userId);
       setTab('patients');
-      return;
+    } catch {
+      toast.error('Impossible de créer la fiche patient.');
     }
-    toast.info('Aucune fiche patient trouvée pour cet email. Créez un compte client correspondant.');
   }
 
   // ─── Cancel Calendly event via Edge Function ───
@@ -815,7 +845,7 @@ export default function PrestataireDashboard() {
                           <div className="flex flex-wrap gap-2 border-t border-rose-soft pt-3">
                             <button
                               type="button"
-                              onClick={() => openPatientFromEmail(invitee.email)}
+                              onClick={() => { void openPatientFromInvitee({ name: invitee.name, email: invitee.email }); }}
                               className="rounded-full border border-primary-light px-4 py-1.5 text-xs font-medium text-primary-dark transition-all duration-200 hover:bg-nude"
                             >
                               Fiche
