@@ -99,19 +99,18 @@ export default function Booking() {
     }
   }, [showCalendar]);
 
-  const calendlyPat = (import.meta.env.VITE_CALENDLY_PAT as string | undefined) ?? '';
-
-  // Fetch event start_time from Calendly API using event URI
+  // Fetch event start_time from Calendly API via Supabase Edge Function (keeps PAT server-side)
   async function fetchEventDateTime(eventUri: string): Promise<{ date: string; time: string } | null> {
-    if (!calendlyPat || !eventUri) return null;
+    if (!eventUri) return null;
     try {
-      const res = await fetch(eventUri, {
-        headers: { Authorization: `Bearer ${calendlyPat}` },
+      const eventId = eventUri.split('/').pop();
+      const { data, error } = await supabase.functions.invoke(`calendly-events?eventId=${eventId}`, {
+        method: 'GET',
       });
-      if (!res.ok) return null;
-      const data = await res.json() as { resource?: { start_time?: string } };
-      if (!data.resource?.start_time) return null;
-      const start = new Date(data.resource.start_time);
+      if (error) return null;
+      const evt = (data as { event?: { startTime?: string } })?.event;
+      if (!evt?.startTime) return null;
+      const start = new Date(evt.startTime);
       return {
         date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
         time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
@@ -169,7 +168,7 @@ export default function Booking() {
       setIsConsultation(false);
       setSelectedServiceIds([]);
       setSelectedCategory(null);
-    }, [isAuthenticated, session, isConsultation, selectedServiceIds, selectedServiceNames, calendlyPat]),
+    }, [isAuthenticated, session, isConsultation, selectedServiceIds, selectedServiceNames]),
   });
 
   return (

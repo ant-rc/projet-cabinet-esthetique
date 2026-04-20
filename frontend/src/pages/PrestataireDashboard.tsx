@@ -383,10 +383,7 @@ export default function PrestataireDashboard() {
   const [profiles, setProfiles] = useState<DbProfile[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Calendly events — fetched directly from Calendly API
-  const calendlyPat = (import.meta.env.VITE_CALENDLY_PAT as string | undefined) ?? '';
-  const CALENDLY_API = 'https://api.calendly.com';
-
+  // Calendly events — fetched via Supabase Edge Function (keeps PAT server-side)
   interface CalendlyEventItem {
     id: string;
     name: string;
@@ -400,69 +397,22 @@ export default function PrestataireDashboard() {
   const [calendlyError, setCalendlyError] = useState<string | null>(null);
 
   const fetchCalendlyEvents = useCallback(async () => {
-    if (!calendlyPat) {
-      setCalendlyError('Token Calendly non configuré (VITE_CALENDLY_PAT).');
-      return;
-    }
     setCalendlyLoading(true);
     setCalendlyError(null);
-    const headers = { Authorization: `Bearer ${calendlyPat}` };
-
     try {
-      // Get user URI
-      const meRes = await fetch(`${CALENDLY_API}/users/me`, { headers });
-      if (!meRes.ok) throw new Error('Calendly auth failed');
-      const meData = await meRes.json() as { resource: { uri: string } };
-
-      // Fetch upcoming events
-      const url = new URL(`${CALENDLY_API}/scheduled_events`);
-      url.searchParams.set('user', meData.resource.uri);
-      url.searchParams.set('status', 'active');
-      url.searchParams.set('min_start_time', new Date().toISOString());
-      url.searchParams.set('count', '20');
-      url.searchParams.set('sort', 'start_time:asc');
-
-      const eventsRes = await fetch(url.toString(), { headers });
-      if (!eventsRes.ok) throw new Error('Failed to fetch events');
-      const eventsData = await eventsRes.json() as { collection: { uri: string; name: string; status: string; start_time: string; end_time: string; created_at: string }[] };
-
-      // Fetch invitees for each event
-      const items: CalendlyEventItem[] = await Promise.all(
-        eventsData.collection.map(async (ev) => {
-          const uuid = ev.uri.split('/').pop()!;
-          let invitees: CalendlyEventItem['invitees'] = [];
-          try {
-            const invRes = await fetch(`${CALENDLY_API}/scheduled_events/${uuid}/invitees`, { headers });
-            if (invRes.ok) {
-              const invData = await invRes.json() as { collection: { name: string; email: string; status: string; tracking?: { utm_content?: string; utm_term?: string } }[] };
-              invitees = invData.collection.map((inv) => ({
-                name: inv.name,
-                email: inv.email,
-                status: inv.status,
-                zones: inv.tracking?.utm_content ?? null,
-                priceInfo: inv.tracking?.utm_term ?? null,
-              }));
-            }
-          } catch { /* skip invitee errors */ }
-          return {
-            id: uuid,
-            name: ev.name,
-            status: ev.status,
-            startTime: ev.start_time,
-            endTime: ev.end_time,
-            invitees,
-          };
-        }),
-      );
-
-      setCalendlyEvents(items);
+      const { data, error } = await supabase.functions.invoke('calendly-events', {
+        method: 'GET',
+      });
+      if (error) throw error;
+      const events = (data as { events?: CalendlyEventItem[] })?.events ?? [];
+      setCalendlyEvents(events);
     } catch {
       setCalendlyError('Impossible de charger les rendez-vous Calendly.');
       setCalendlyEvents([]);
     } finally {
       setCalendlyLoading(false);
     }
-  }, [calendlyPat]);
+  }, []);
 
   // Appointments filters
   const [filterStatus, setFilterStatus] = useState<AppointmentStatus | 'all'>('all');
