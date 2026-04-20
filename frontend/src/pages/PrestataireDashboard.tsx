@@ -25,7 +25,7 @@ interface AppointmentRow extends DbAppointment {
   profile_name: string;
 }
 
-type Tab = 'planning' | 'appointments' | 'patients' | 'notifications';
+type Tab = 'planning' | 'appointments' | 'patients';
 
 // ─── Migration helper: old TreatmentNote -> TreatmentSession ───
 
@@ -483,21 +483,44 @@ export default function PrestataireDashboard() {
     toast.success('Statut mis à jour.');
   }
 
-  // ─── Notifications (derived from appointments) ───
-  const notifications = useMemo(() => {
-    return [...appointments]
-      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-      .slice(0, 50)
-      .map((a) => ({
-        id: a.id,
-        type: a.status === 'cancelled' ? 'cancellation' as const : 'new_appointment' as const,
-        message: `${a.is_first_consultation ? 'Consultation' : (getServiceById(a.service_id ?? '')?.name ?? 'Séance')} — ${a.profile_name}`,
-        date: a.date,
-        time: a.time,
-        status: a.status,
-        createdAt: a.created_at,
-      }));
-  }, [appointments]);
+  // ─── Open patient file from Calendly event invitee email ───
+  function openPatientFromEmail(email: string) {
+    const match = profiles.find((p) => {
+      const user = appointments.find((a) => a.user_id === p.user_id);
+      return user && p.user_id; // profile exists
+    });
+    // Match by email via users list (need to fetch users too)
+    const normalizedEmail = email.trim().toLowerCase();
+    const foundAppt = appointments.find((a) => a.notes?.toLowerCase().includes(normalizedEmail));
+    if (foundAppt) {
+      setSelectedPatientId(foundAppt.user_id);
+      setTab('patients');
+      return;
+    }
+    if (match) {
+      setSelectedPatientId(match.user_id);
+      setTab('patients');
+      return;
+    }
+    toast.info('Aucune fiche patient trouvée pour cet email. Créez un compte client correspondant.');
+  }
+
+  // ─── Cancel Calendly event via Edge Function ───
+  async function cancelCalendlyEvent(eventId: string) {
+    if (!confirm('Confirmer l\'annulation de ce rendez-vous ?')) return;
+    try {
+      const { data, error } = await supabase.functions.invoke(`calendly-events?eventId=${eventId}&action=cancel`, {
+        method: 'POST',
+      });
+      if (error) throw error;
+      const result = data as { success?: boolean; error?: string };
+      if (result.error) throw new Error(result.error);
+      toast.success('Rendez-vous annulé.');
+      void fetchCalendlyEvents();
+    } catch {
+      toast.error('Erreur lors de l\'annulation. Réessayez.');
+    }
+  }
 
   // ─── Patients ───
   const selectedPatient = profiles.find((p) => p.user_id === selectedPatientId);
@@ -660,7 +683,6 @@ export default function PrestataireDashboard() {
             { key: 'planning' as Tab, label: 'Planning' },
             { key: 'appointments' as Tab, label: 'Rendez-vous' },
             { key: 'patients' as Tab, label: 'Patients' },
-            { key: 'notifications' as Tab, label: 'Notifications' },
           ]).map(({ key, label }) => (
             <button
               key={key}
@@ -750,43 +772,63 @@ export default function PrestataireDashboard() {
                     const timeStr = start.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
                     return (
-                      <div key={evt.id} className="card-hover flex flex-col gap-3 rounded-2xl border border-rose-soft bg-white p-4 sm:flex-row sm:items-center sm:justify-between">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-2">
-                            <span className="font-semibold text-text">{evt.name}</span>
-                            <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
-                              {durationMin} min
-                            </span>
-                          </div>
-                          {invitee && (
-                            <div className="flex flex-col gap-0.5">
-                              <span className="text-sm text-text-light">
-                                {invitee.name} — {invitee.email}
+                      <div key={evt.id} className="card-hover flex flex-col gap-3 rounded-2xl border border-rose-soft bg-white p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                          <div className="flex flex-col gap-1">
+                            <div className="flex items-center gap-2">
+                              <span className="font-semibold text-text">{evt.name}</span>
+                              <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-bold text-green-700">
+                                {durationMin} min
                               </span>
-                              {invitee.zones && (
-                                <span className="text-xs text-primary-dark">
-                                  Zones : {invitee.zones}
-                                </span>
-                              )}
-                              {invitee.priceInfo && (
-                                <span className="text-xs text-text-light">
-                                  {invitee.priceInfo}
-                                </span>
-                              )}
+                              <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                evt.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
+                              }`}>
+                                {evt.status === 'active' ? 'Confirmé' : 'Annulé'}
+                              </span>
                             </div>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3 text-right">
-                          <div>
+                            {invitee && (
+                              <div className="flex flex-col gap-0.5">
+                                <span className="text-sm text-text-light">
+                                  {invitee.name} — {invitee.email}
+                                </span>
+                                {invitee.zones && (
+                                  <span className="text-xs text-primary-dark">
+                                    Zones : {invitee.zones}
+                                  </span>
+                                )}
+                                {invitee.priceInfo && (
+                                  <span className="text-xs text-text-light">
+                                    {invitee.priceInfo}
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                          <div className="text-right sm:shrink-0">
                             <p className="text-sm font-semibold capitalize text-text">{dateStr}</p>
                             <p className="text-xs text-text-light">{timeStr}</p>
                           </div>
-                          <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${
-                            evt.status === 'active' ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'
-                          }`}>
-                            {evt.status === 'active' ? 'Confirmé' : 'Annulé'}
-                          </span>
                         </div>
+
+                        {/* Actions */}
+                        {evt.status === 'active' && invitee && (
+                          <div className="flex flex-wrap gap-2 border-t border-rose-soft pt-3">
+                            <button
+                              type="button"
+                              onClick={() => openPatientFromEmail(invitee.email)}
+                              className="rounded-full border border-primary-light px-4 py-1.5 text-xs font-medium text-primary-dark transition-all duration-200 hover:bg-nude"
+                            >
+                              Fiche
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => cancelCalendlyEvent(evt.id)}
+                              className="rounded-full border border-red-200 px-4 py-1.5 text-xs font-medium text-red-600 transition-all duration-200 hover:bg-red-50"
+                            >
+                              Annuler
+                            </button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -1003,42 +1045,6 @@ export default function PrestataireDashboard() {
           </div>
         )}
 
-        {/* TAB: Notifications */}
-        {tab === 'notifications' && (
-          <div className="mt-6">
-            {notifications.length === 0 ? (
-              <p className="text-sm text-text-light">Aucune notification.</p>
-            ) : (
-              <div className="flex flex-col gap-2">
-                {notifications.map((n) => (
-                  <div
-                    key={n.id}
-                    className={`flex items-center justify-between gap-4 rounded-xl border px-5 py-4 text-sm transition-colors ${
-                      n.status === 'cancelled'
-                        ? 'border-red-200 bg-red-50/50 text-text'
-                        : 'border-primary-light bg-rose-soft/30 text-text'
-                    }`}
-                  >
-                    <div className="flex flex-col gap-1">
-                      <span className={`text-xs font-semibold uppercase tracking-wider ${
-                        n.status === 'cancelled' ? 'text-red-600' : 'text-green-600'
-                      }`}>
-                        {n.status === 'cancelled' ? 'Annulation' : n.status === 'completed' ? 'Terminé' : 'Nouveau RDV'}
-                      </span>
-                      <span>{n.message}</span>
-                      <span className="text-xs text-text-light">
-                        {formatDateDisplay(n.date, { day: 'numeric', month: 'short' })} à {n.time}
-                      </span>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_CONFIG[n.status].classes}`}>
-                      {STATUS_CONFIG[n.status].label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-        )}
       </div>
     </section>
   );

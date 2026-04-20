@@ -64,8 +64,29 @@ Deno.serve(async (req: Request) => {
   const url = new URL(req.url);
 
   try {
-    // Single event fetch
     const eventId = url.searchParams.get('eventId');
+    const action = url.searchParams.get('action');
+
+    // Cancel a scheduled event
+    if (eventId && action === 'cancel' && req.method === 'POST') {
+      const cancelRes = await fetch(`${CALENDLY_API}/scheduled_events/${eventId}/cancellation`, {
+        method: 'POST',
+        headers: { ...headers, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: 'Annulé par le prestataire' }),
+      });
+      if (!cancelRes.ok) {
+        const errText = await cancelRes.text();
+        return new Response(JSON.stringify({ error: errText || 'Cancel failed' }), {
+          status: cancelRes.status,
+          headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+        });
+      }
+      return new Response(JSON.stringify({ success: true }), {
+        headers: { ...CORS_HEADERS, 'Content-Type': 'application/json' },
+      });
+    }
+
+    // Single event fetch
     if (eventId) {
       const res = await fetch(`${CALENDLY_API}/scheduled_events/${eventId}`, { headers });
       if (!res.ok) {
