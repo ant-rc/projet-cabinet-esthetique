@@ -1001,11 +1001,14 @@ export default function PrestataireDashboard() {
                       </thead>
                       <tbody>
                         {filteredProfiles.map((p) => {
+                          const today = formatDateKey(new Date());
                           const patientAppts = appointments.filter((a) => a.user_id === p.user_id);
                           const apptCount = patientAppts.length;
-                          const lastAppt = patientAppts.sort((a, b) =>
-                            b.date.localeCompare(a.date) || b.time.localeCompare(a.time),
-                          )[0];
+                          const lastAppt = patientAppts
+                            .filter((a) => a.date <= today)
+                            .sort((a, b) =>
+                              b.date.localeCompare(a.date) || b.time.localeCompare(a.time),
+                            )[0];
                           return (
                             <tr key={p.id} className="border-b border-rose-soft/50 transition-colors hover:bg-nude/30">
                               <td className="px-4 py-3 font-medium text-text">
