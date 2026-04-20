@@ -421,6 +421,7 @@ export default function PrestataireDashboard() {
 
   // Patients
   const [selectedPatientId, setSelectedPatientId] = useState<string | null>(null);
+  const [patientSearch, setPatientSearch] = useState('');
   const [sessionsVersion, setSessionsVersion] = useState(0);
 
   // Session form (add new)
@@ -464,16 +465,24 @@ export default function PrestataireDashboard() {
     }
   }, [authLoading, isAuthenticated, role, navigate, fetchAll, fetchCalendlyEvents]);
 
-  // ─── Appointments ───
+  // ─── Appointments history (past or terminal-state appointments only) ───
   const filtered = useMemo(() => {
-    let result = appointments;
+    const today = formatDateKey(new Date());
+    let result = appointments.filter((a) => {
+      // Historical: past date, OR status is terminal (completed/cancelled/no_show)
+      return a.date < today || a.status === 'completed' || a.status === 'cancelled' || a.status === 'no_show';
+    });
     if (filterStatus !== 'all') result = result.filter((a) => a.status === filterStatus);
     if (filterDate) result = result.filter((a) => a.date === filterDate);
     if (searchClient) {
       const q = searchClient.toLowerCase();
       result = result.filter((a) => a.profile_name.toLowerCase().includes(q));
     }
-    return result;
+    // Sort by date desc, then time desc
+    return [...result].sort((a, b) => {
+      const dateCmp = b.date.localeCompare(a.date);
+      return dateCmp !== 0 ? dateCmp : b.time.localeCompare(a.time);
+    });
   }, [appointments, filterStatus, filterDate, searchClient]);
 
   async function handleUpdateStatus(id: string, newStatus: AppointmentStatus) {
@@ -554,6 +563,20 @@ export default function PrestataireDashboard() {
 
   // ─── Patients ───
   const selectedPatient = profiles.find((p) => p.user_id === selectedPatientId);
+
+  const filteredProfiles = useMemo(() => {
+    const q = patientSearch.trim().toLowerCase();
+    const base = [...profiles].sort((a, b) =>
+      `${a.last_name} ${a.first_name}`.localeCompare(`${b.last_name} ${b.first_name}`),
+    );
+    if (!q) return base;
+    return base.filter((p) => {
+      const fullName = `${p.first_name} ${p.last_name}`.toLowerCase();
+      const reversed = `${p.last_name} ${p.first_name}`.toLowerCase();
+      const phone = (p.phone ?? '').toLowerCase();
+      return fullName.includes(q) || reversed.includes(q) || phone.includes(q);
+    });
+  }, [profiles, patientSearch]);
   const patientAppointments = useMemo(
     () => selectedPatientId ? appointments.filter((a) => a.user_id === selectedPatientId) : [],
     [selectedPatientId, appointments],
@@ -711,7 +734,7 @@ export default function PrestataireDashboard() {
         <div className="mt-8 flex gap-2 border-b border-rose-soft">
           {([
             { key: 'planning' as Tab, label: 'Planning' },
-            { key: 'appointments' as Tab, label: 'Rendez-vous' },
+            { key: 'appointments' as Tab, label: 'Historique' },
             { key: 'patients' as Tab, label: 'Patients' },
           ]).map(({ key, label }) => (
             <button
@@ -949,22 +972,64 @@ export default function PrestataireDashboard() {
           <div className="mt-6">
             {!selectedPatient ? (
               <div>
-                <h2 className="font-serif text-lg font-semibold text-text">Liste des patients</h2>
-                {profiles.length === 0 ? (
-                  <p className="mt-4 text-sm text-text-light">Aucun patient enregistré.</p>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  <h2 className="font-serif text-lg font-semibold text-text">Liste des patients</h2>
+                  <input
+                    type="text"
+                    placeholder="Rechercher un patient..."
+                    value={patientSearch}
+                    onChange={(e) => setPatientSearch(e.target.value)}
+                    className="w-full rounded-lg border border-rose-soft bg-white px-3 py-2 text-sm text-text placeholder:text-text-light/50 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 sm:w-72"
+                  />
+                </div>
+
+                {filteredProfiles.length === 0 ? (
+                  <p className="mt-6 text-sm text-text-light">
+                    {profiles.length === 0 ? 'Aucun patient enregistré.' : 'Aucun patient ne correspond à la recherche.'}
+                  </p>
                 ) : (
-                  <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                    {profiles.map((p) => {
-                      const apptCount = appointments.filter((a) => a.user_id === p.user_id).length;
-                      return (
-                        <button key={p.id} type="button" onClick={() => setSelectedPatientId(p.user_id)}
-                          className="card-hover rounded-xl border border-rose-soft bg-white p-4 text-left">
-                          <p className="font-semibold text-text">{p.first_name} {p.last_name}</p>
-                          <p className="text-xs text-text-light">{p.phone || '—'}</p>
-                          <p className="mt-2 text-xs text-text-light">{apptCount} rendez-vous</p>
-                        </button>
-                      );
-                    })}
+                  <div className="mt-4 overflow-x-auto rounded-xl border border-rose-soft">
+                    <table className="w-full text-left text-sm">
+                      <thead>
+                        <tr className="border-b border-rose-soft bg-nude/50">
+                          <th className="px-4 py-3 font-semibold text-text">Nom</th>
+                          <th className="px-4 py-3 font-semibold text-text">Téléphone</th>
+                          <th className="hidden px-4 py-3 font-semibold text-text sm:table-cell">Rendez-vous</th>
+                          <th className="hidden px-4 py-3 font-semibold text-text md:table-cell">Dernier RDV</th>
+                          <th className="px-4 py-3 text-right font-semibold text-text">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredProfiles.map((p) => {
+                          const patientAppts = appointments.filter((a) => a.user_id === p.user_id);
+                          const apptCount = patientAppts.length;
+                          const lastAppt = patientAppts.sort((a, b) =>
+                            b.date.localeCompare(a.date) || b.time.localeCompare(a.time),
+                          )[0];
+                          return (
+                            <tr key={p.id} className="border-b border-rose-soft/50 transition-colors hover:bg-nude/30">
+                              <td className="px-4 py-3 font-medium text-text">
+                                {p.first_name} {p.last_name}
+                              </td>
+                              <td className="px-4 py-3 text-text-light">{p.phone || '—'}</td>
+                              <td className="hidden px-4 py-3 text-text-light sm:table-cell">{apptCount}</td>
+                              <td className="hidden px-4 py-3 text-text-light md:table-cell">
+                                {lastAppt ? formatDateDisplay(lastAppt.date, { day: 'numeric', month: 'short', year: 'numeric' }) : '—'}
+                              </td>
+                              <td className="px-4 py-3 text-right">
+                                <button
+                                  type="button"
+                                  onClick={() => setSelectedPatientId(p.user_id)}
+                                  className="rounded-full bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary-dark transition-all duration-200 hover:bg-primary hover:text-white"
+                                >
+                                  Voir la fiche
+                                </button>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
                   </div>
                 )}
               </div>
