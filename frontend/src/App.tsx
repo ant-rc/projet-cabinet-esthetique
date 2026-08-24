@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import { AuthProvider, useAuth } from '@/context/AuthContext';
 import Layout from '@/components/layout/Layout';
 import Seo from '@/components/Seo';
+import Analytics from '@/components/Analytics';
 import Home from '@/pages/Home';
 import Pricing from '@/pages/Pricing';
 import Booking from '@/pages/Booking';
@@ -64,6 +65,7 @@ export default function App() {
   return (
     <AuthProvider>
       <BrowserRouter>
+        <Analytics />
         <Routes>
           <Route element={<Layout />}>
             {/* Public */}
