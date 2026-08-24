@@ -150,9 +150,9 @@ export default function CookieBanner() {
 
             <label className="flex cursor-pointer items-center justify-between rounded-xl border border-rose-soft px-4 py-3 transition-colors hover:bg-nude/50">
               <div>
-                <p className="text-xs font-semibold text-text">Analytiques</p>
+                <p className="text-xs font-semibold text-text">Mesure d&apos;audience</p>
                 <p className="mt-0.5 text-[11px] text-text-light">
-                  Vercel Analytics &mdash; mesure de performance et de fr&eacute;quentation.
+                  Fr&eacute;quentation et parcours de navigation, de mani&egrave;re anonyme.
                 </p>
               </div>
               <input

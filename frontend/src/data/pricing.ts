@@ -186,7 +186,9 @@ export const centerInfo = {
   phone: '06 36 39 80 79',
   email: 'aalasermed@gmail.com',
   googleMapsUrl: 'https://maps.google.com/?q=49+Rue+du+Bois+de+la+Garenne+77700+Magny-le-Hongre',
-  googleMapsEmbed: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2632.5!2d2.7833!3d48.8667!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x47e61b3b tried6b%3A0x0!2z!5e0!3m2!1sfr!2sfr!4v1',
+  googleMapsEmbed:
+    'https://www.google.com/maps?q=49+Rue+du+Bois+de+la+Garenne,+77700+Magny-le-Hongre&hl=fr&z=16&output=embed',
+  geo: { latitude: 48.8667, longitude: 2.7833 },
   access: {
     gare: 'Gare de Val d\'Europe',
     bus: 'Bus 2234 — Arrêt La Boiserie (4 min à pied)',

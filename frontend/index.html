@@ -4,11 +4,80 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="description" content="AA Laser Med — Centre d'épilation laser définitive par une infirmière diplômée d'État. Tarifs clairs, prise de rendez-vous en ligne." />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:wght@400;500;600;700&display=swap" rel="stylesheet" />
-    <title>AA Laser Med — Épilation laser définitive</title>
+    <!--
+      No <title> or <meta name="description"> here on purpose.
+
+      React 19 hoists the ones rendered by src/components/Seo.tsx into <head>,
+      but it does not remove static tags declared in this file: keeping them
+      would emit two <title> and two descriptions per page, and crawlers read
+      the first one — the generic one. Titles are therefore owned by Seo.tsx
+      alone. Prerendering will restore them in the served HTML.
+
+      Structured data stays here: it is not duplicated by any component, and
+      crawlers read it without executing JavaScript.
+    -->
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "MedicalBusiness",
+        "@id": "https://aa-lasermed.com/#business",
+        "name": "AA Laser Med",
+        "legalName": "AA LASERMED",
+        "url": "https://aa-lasermed.com",
+        "description": "Centre d'épilation laser définitive à Magny-le-Hongre, tenu par une infirmière diplômée d'État. Laser Candela GentleMax Pro, tous phototypes. Tarifs affichés.",
+        "medicalSpecialty": "DermatologicSurgery",
+        "priceRange": "30€ - 370€",
+        "currenciesAccepted": "EUR",
+        "image": "https://aa-lasermed.com/images/machine.jpeg",
+        "telephone": "+33636398079",
+        "email": "aalasermed@gmail.com",
+        "address": {
+          "@type": "PostalAddress",
+          "streetAddress": "49 rue du Bois de la Garenne",
+          "postalCode": "77700",
+          "addressLocality": "Magny-le-Hongre",
+          "addressRegion": "Île-de-France",
+          "addressCountry": "FR"
+        },
+        "geo": {
+          "@type": "GeoCoordinates",
+          "latitude": 48.8667,
+          "longitude": 2.7833
+        },
+        "areaServed": [
+          { "@type": "City", "name": "Magny-le-Hongre" },
+          { "@type": "City", "name": "Serris" },
+          { "@type": "City", "name": "Chessy" },
+          { "@type": "City", "name": "Bailly-Romainvilliers" },
+          { "@type": "City", "name": "Montévrain" },
+          { "@type": "City", "name": "Coupvray" }
+        ],
+        "openingHoursSpecification": [
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": ["Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"],
+            "opens": "09:30",
+            "closes": "21:00"
+          },
+          {
+            "@type": "OpeningHoursSpecification",
+            "dayOfWeek": "Sunday",
+            "opens": "09:30",
+            "closes": "14:00"
+          }
+        ],
+        "availableService": {
+          "@type": "MedicalProcedure",
+          "name": "Épilation laser définitive",
+          "howPerformed": "Laser Candela GentleMax Pro, technologies Alexandrite (755 nm) et Nd:YAG (1064 nm), refroidissement CryoAir. Compatible avec les phototypes I à VI."
+        },
+        "publicAccess": true,
+        "isAcceptingNewPatients": true
+      }
+    </script>
   </head>
   <body>
     <div id="root"></div>

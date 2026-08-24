@@ -3,6 +3,7 @@ import { InlineWidget, useCalendlyEventListener } from 'react-calendly';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import Seo from '@/components/Seo';
 import { supabase } from '@/lib/supabase';
 import { getServicesByGender, getServicesByGenderAndCategory, getCategoriesForGender, getServiceById } from '@/data/pricing';
 import { calculateTotalPrice, calculateTotalDuration, formatDuration } from '@/utils/booking';
@@ -173,6 +174,11 @@ export default function Booking() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
+      <Seo
+        path="/reservation"
+        title="Prendre rendez-vous — Épilation laser Magny-le-Hongre"
+        description="Réservez votre séance d'épilation laser définitive à Magny-le-Hongre. Première consultation gratuite de 30 minutes, tir d'essai inclus. Du mardi au samedi jusqu'à 21h."
+      />
       <div className="mx-auto max-w-3xl">
         <h1 className="text-center font-serif text-3xl font-bold text-text md:text-4xl">
           Prendre rendez-vous

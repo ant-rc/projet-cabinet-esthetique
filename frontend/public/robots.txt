@@ -1,0 +1,10 @@
+User-agent: *
+Allow: /
+
+# Private areas — no ranking value, must never surface in search results
+Disallow: /account
+Disallow: /mes-rdv
+Disallow: /login
+Disallow: /prestataire/
+
+Sitemap: https://aa-lasermed.com/sitemap.xml

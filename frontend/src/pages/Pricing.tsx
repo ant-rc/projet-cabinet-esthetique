@@ -1,12 +1,19 @@
 import { useState, useMemo } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { getServicesByGender, getCategoriesForGender } from '@/data/pricing';
+import { servicePath, parseGenderSlug } from '@/lib/serviceRoutes';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+import Seo from '@/components/Seo';
 import type { Gender, ServiceCategory } from '@/types';
 
 export default function Pricing() {
   const { ref, isVisible } = useScrollReveal();
-  const [gender, setGender] = useState<Gender>('female');
+  const [searchParams] = useSearchParams();
+  // Service pages link back here with ?gender=, so the catalogue opens on the
+  // side the visitor was already reading.
+  const [gender, setGender] = useState<Gender>(
+    () => parseGenderSlug(searchParams.get('gender') ?? undefined) ?? 'female',
+  );
   const [activeCategory, setActiveCategory] = useState<ServiceCategory | null>(null);
 
   const categories = useMemo(() => getCategoriesForGender(gender), [gender]);
@@ -28,6 +35,11 @@ export default function Pricing() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
+      <Seo
+        path="/tarifs"
+        title="Tarifs épilation laser à Magny-le-Hongre — AA Laser Med"
+        description="Tous les tarifs d'épilation laser définitive, femme et homme, de 30 € à 370 €. Prix affichés par zone, sans devis. Consultation gratuite de 30 min avec tir d'essai."
+      />
       <div className="mx-auto max-w-5xl">
         <h1 className="text-center font-serif text-3xl font-bold text-text md:text-4xl">
           Nos Tarifs
@@ -100,8 +112,9 @@ export default function Pricing() {
                 </h2>
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {items.map((item) => (
-                    <article
+                    <Link
                       key={item.id}
+                      to={servicePath(item)}
                       className="card-hover flex items-center justify-between rounded-2xl border border-primary-light/50 bg-white px-6 py-5"
                     >
                       <div>
@@ -109,7 +122,7 @@ export default function Pricing() {
                         <p className="mt-1 text-xs text-text-light">{item.duration} min</p>
                       </div>
                       <p className="text-2xl font-bold text-primary-dark">{item.price}&euro;</p>
-                    </article>
+                    </Link>
                   ))}
                 </div>
               </div>

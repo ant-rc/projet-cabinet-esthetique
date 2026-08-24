@@ -1,6 +1,11 @@
 import { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { faqData } from '@/data/pricing';
+import { faqPages } from '@/data/faqPages';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
+
+/** Questions that also exist as a standalone page, by question text. */
+const SLUG_BY_QUESTION = new Map(faqPages.map((p) => [p.question, p.slug]));
 
 export default function FAQ() {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
@@ -22,6 +27,7 @@ export default function FAQ() {
         <div className={`reveal ${isVisible ? 'visible' : ''} mt-12 flex flex-col gap-3`}>
           {faqData.map((item, index) => {
             const isOpen = openIndex === index;
+            const slug = SLUG_BY_QUESTION.get(item.question);
 
             return (
               <div
@@ -54,15 +60,27 @@ export default function FAQ() {
                 </button>
 
                 <div className={`faq-content ${isOpen ? 'open' : ''}`}>
-                  <div>
-                    <p className="px-6 pb-5 text-sm leading-relaxed text-text-light">
-                      {item.answer}
-                    </p>
+                  <div className="flex flex-col gap-2 px-6 pb-5">
+                    <p className="text-sm leading-relaxed text-text-light">{item.answer}</p>
+                    {slug && (
+                      <Link
+                        to={`/faq/${slug}`}
+                        className="self-start text-sm text-primary-dark underline"
+                      >
+                        En savoir plus
+                      </Link>
+                    )}
                   </div>
                 </div>
               </div>
             );
           })}
+        </div>
+
+        <div className="mt-8 flex justify-center">
+          <Link to="/faq" className="text-sm text-primary-dark underline">
+            Voir toutes les questions fr&eacute;quentes
+          </Link>
         </div>
       </div>
     </section>

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
+import Seo from '@/components/Seo';
 
 type LegalTab = 'mentions' | 'cgu' | 'cgv' | 'rgpd' | 'cookies';
 
@@ -31,7 +32,10 @@ function MentionsLegales() {
 
       <H2>Hébergement</H2>
       <p>Vercel Inc. — 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
-      <p>Données applicatives : Supabase Inc. — 970 Toa Payoh North #07-04, Singapour.</p>
+      <p>
+        Données applicatives : Supabase Inc. — 970 Toa Payoh North #07-04, Singapour.
+        Données stockées dans l&apos;Union européenne (région Irlande).
+      </p>
 
       <H2>Propriété intellectuelle</H2>
       <p>
@@ -166,17 +170,32 @@ function RGPD() {
         notifications liées aux rendez-vous, obligations légales.
       </p>
 
+      <H2>Où sont conservées vos données</H2>
+      <p>
+        Les données de compte et de rendez-vous sont enregistrées chez notre hébergeur, sur des
+        serveurs situés dans l&apos;Union européenne.
+      </p>
+      <p>
+        Le dossier patient — questionnaire médical, antécédents et consentement — n&apos;est pas
+        transmis à l&apos;hébergeur du site&nbsp;: il est enregistré localement, sur le poste
+        utilisé au cabinet par la praticienne, et ne quitte pas cet appareil.
+      </p>
+
       <H2>Conservation</H2>
       <ul className="ml-4 list-disc space-y-1">
         <li>Données de compte : durée de la relation + 3 ans</li>
-        <li>Données médicales : 20 ans (art. R.1112-7 du Code de la santé publique)</li>
+        <li>Dossier patient : 20 ans (art. R.1112-7 du Code de la santé publique)</li>
         <li>Cookies : 13 mois maximum</li>
       </ul>
 
       <H2>Destinataires</H2>
       <p>
-        Supabase Inc. (hébergement données), Vercel Inc. (hébergement site), Google LLC (Google Maps).
-        Transferts hors UE encadrés par clauses contractuelles types.
+        Supabase Inc. (hébergement du compte et des rendez-vous), Vercel Inc. (hébergement du site),
+        Calendly LLC (prise de rendez-vous), Google LLC (Google Maps, uniquement après votre
+        consentement). Transferts hors UE encadrés par clauses contractuelles types.
+      </p>
+      <p>
+        Le dossier patient n&apos;est communiqué à aucun de ces prestataires.
       </p>
 
       <H2>Vos droits</H2>
@@ -243,6 +262,11 @@ export default function Legal() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
+      <Seo
+        path="/mentions-legales"
+        title="Mentions légales et politique RGPD — AA Laser Med"
+        description="Mentions légales, conditions générales de vente et d'utilisation, politique de confidentialité et gestion des cookies d'AA LASERMED."
+      />
       <div className="mx-auto max-w-3xl">
         <h1 className="text-center font-serif text-3xl font-bold text-text md:text-4xl">
           Informations l&eacute;gales
@@ -270,7 +294,7 @@ export default function Legal() {
         </div>
 
         <p className="mt-10 text-center text-xs text-text-light/50">
-          Derni&egrave;re mise &agrave; jour : avril 2026
+          Derni&egrave;re mise &agrave; jour : ao&ucirc;t 2026
         </p>
       </div>
     </section>
