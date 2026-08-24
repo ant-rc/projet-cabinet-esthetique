@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import Seo, { SITE_URL } from '@/components/Seo';
+import { staticMeta } from '@/lib/pageMeta';
 import { faqPages } from '@/data/faqPages';
 
 export default function Faq() {
@@ -16,11 +17,7 @@ export default function Faq() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
-      <Seo
-        path="/faq"
-        title="Questions fréquentes sur l'épilation laser — AA Laser Med"
-        description="Douleur, nombre de séances, contre-indications, phototypes, préparation : les réponses aux questions posées avant une première séance d'épilation laser à Magny-le-Hongre."
-      />
+      <Seo {...staticMeta('/faq')} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}

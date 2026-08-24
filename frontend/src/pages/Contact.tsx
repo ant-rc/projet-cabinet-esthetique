@@ -3,6 +3,7 @@ import { centerInfo } from '@/data/pricing';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
 import { getCookieConsent } from '@/components/layout/CookieBanner';
 import Seo from '@/components/Seo';
+import { staticMeta } from '@/lib/pageMeta';
 
 export default function Contact() {
   const { ref, isVisible } = useScrollReveal();
@@ -21,11 +22,7 @@ export default function Contact() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
-      <Seo
-        path="/contact"
-        title="Contact et accès — AA Laser Med, Magny-le-Hongre"
-        description="AA Laser Med, 49 rue du Bois de la Garenne, 77700 Magny-le-Hongre. Gare de Val d'Europe, bus 2234, parking gratuit. Du mardi au samedi jusqu'à 21h, dimanche matin."
-      />
+      <Seo {...staticMeta('/contact')} />
       <div className="mx-auto max-w-5xl">
         <h1 className="text-center font-serif text-3xl font-bold text-text md:text-4xl">
           Contact &amp; Accès

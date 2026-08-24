@@ -5,6 +5,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { sanitize } from '@/utils/sanitize';
 import Seo from '@/components/Seo';
+import { staticMeta } from '@/lib/pageMeta';
 
 type AuthTab = 'login' | 'register';
 
@@ -103,12 +104,7 @@ export default function Login() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
-      <Seo
-        noindex
-        path="/login"
-        title="Connexion — AA Laser Med"
-        description="Accédez à votre espace patient AA Laser Med."
-      />
+      <Seo {...staticMeta('/login')} />
       <div className="mx-auto max-w-md">
         <h1 className="text-center font-serif text-3xl font-bold text-text md:text-4xl">
           {activeTab === 'login' ? 'Se connecter' : 'Créer un compte'}

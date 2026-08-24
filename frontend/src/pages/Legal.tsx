@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Seo from '@/components/Seo';
+import { staticMeta } from '@/lib/pageMeta';
 
 type LegalTab = 'mentions' | 'cgu' | 'cgv' | 'rgpd' | 'cookies';
 
@@ -262,11 +263,7 @@ export default function Legal() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
-      <Seo
-        path="/mentions-legales"
-        title="Mentions légales et politique RGPD — AA Laser Med"
-        description="Mentions légales, conditions générales de vente et d'utilisation, politique de confidentialité et gestion des cookies d'AA LASERMED."
-      />
+      <Seo {...staticMeta('/mentions-legales')} />
       <div className="mx-auto max-w-3xl">
         <h1 className="text-center font-serif text-3xl font-bold text-text md:text-4xl">
           Informations l&eacute;gales
