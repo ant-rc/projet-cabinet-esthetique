@@ -3,6 +3,7 @@ import Seo, { SITE_URL } from '@/components/Seo';
 import NotFound from '@/pages/NotFound';
 import { categories, centerInfo } from '@/data/pricing';
 import { findService, relatedServices, servicePath, genderToSlug } from '@/lib/serviceRoutes';
+import { serviceMeta } from '@/lib/pageMeta';
 import type { DbService } from '@/types';
 
 /** Protocol figures come from the FAQ, which is the client-validated wording. */
@@ -48,11 +49,7 @@ export default function ServiceDetail() {
 
   return (
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
-      <Seo
-        path={path}
-        title={`Épilation laser ${service.name.toLowerCase()} ${genderLabel.toLowerCase()} — ${service.price} € la séance | Magny-le-Hongre`}
-        description={`Épilation laser définitive ${service.name.toLowerCase()} ${genderLabel.toLowerCase()} à Magny-le-Hongre : ${service.price} € la séance, ${service.duration} min. Comptez ${SESSIONS_MIN} à ${SESSIONS_MAX} séances. Consultation gratuite avec tir d'essai.`}
-      />
+      <Seo {...serviceMeta(service)} />
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }}
