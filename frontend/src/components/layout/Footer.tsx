@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 
 const LEGAL_LINKS = [
+  { to: '/faq', label: 'Questions fréquentes' },
   { to: '/mentions-legales', label: 'Mentions légales' },
   { to: '/mentions-legales?tab=cgu', label: 'CGU' },
   { to: '/mentions-legales?tab=cgv', label: 'CGV' },

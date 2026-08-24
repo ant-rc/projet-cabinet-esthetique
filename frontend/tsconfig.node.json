@@ -6,6 +6,12 @@
     "module": "ESNext",
     "types": ["node"],
     "skipLibCheck": true,
+    /* The sitemap generator imports src/lib/serviceRoutes, which reaches app
+       source using the @/* alias. */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"]
+    },
 
     /* Bundler mode */
     "moduleResolution": "bundler",
