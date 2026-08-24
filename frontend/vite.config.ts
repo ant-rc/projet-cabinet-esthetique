@@ -4,7 +4,7 @@ import { defineConfig } from 'vite'
 import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { ALL_PAGES } from './src/lib/pageMeta'
+import { ALL_PAGES, PRICE_MIN, PRICE_MAX } from './src/lib/pageMeta'
 import type { PageMeta } from './src/lib/pageMeta'
 
 const SITE_URL = 'https://aa-lasermed.com'
@@ -75,11 +75,22 @@ function prerender(): Plugin {
     apply: 'build',
     closeBundle() {
       const distDir = resolve(__dirname, 'dist')
-      const template = readFileSync(resolve(distDir, 'index.html'), 'utf-8')
+      let template = readFileSync(resolve(distDir, 'index.html'), 'utf-8')
 
       if (!template.includes('</head>')) {
         throw new Error('prerender: no </head> in the built index.html')
       }
+
+      // La fourchette de prix des données structurées est recalculée depuis le
+      // catalogue : écrite en dur, elle annonçait un tarif que les pages ne
+      // servaient pas.
+      if (!/"priceRange": "[^"]*"/.test(template)) {
+        throw new Error('prerender: priceRange introuvable dans index.html')
+      }
+      template = template.replace(
+        /"priceRange": "[^"]*"/,
+        `"priceRange": "${PRICE_MIN}€ - ${PRICE_MAX}€"`,
+      )
 
       for (const page of ALL_PAGES) {
         const html = template.replace('</head>', `${headTags(page)}\n  </head>`)
