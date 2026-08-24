@@ -22,6 +22,17 @@ export interface PageMeta {
 const SESSIONS_MIN = 6
 const SESSIONS_MAX = 8
 
+/**
+ * Amplitude tarifaire calculée depuis le catalogue.
+ *
+ * Elle était écrite en dur et annonçait 370 € alors que le prix le plus élevé
+ * publié est inférieur : une description ne doit pas promettre une grille que
+ * les pages ne servent pas.
+ */
+const PRICES = servicesData.map((s) => s.price)
+export const PRICE_MIN = Math.min(...PRICES)
+export const PRICE_MAX = Math.max(...PRICES)
+
 /** Static routes, in sitemap order. */
 export const STATIC_PAGES: PageMeta[] = [
   {
@@ -34,7 +45,7 @@ export const STATIC_PAGES: PageMeta[] = [
     path: '/tarifs',
     title: 'Tarifs épilation laser à Magny-le-Hongre — AA Laser Med',
     description:
-      "Tous les tarifs d'épilation laser définitive, femme et homme, de 30 € à 370 €. Prix affichés par zone, sans devis. Consultation gratuite de 30 min avec tir d'essai.",
+      `Tous les tarifs d'épilation laser définitive, femme et homme, de ${PRICE_MIN} € à ${PRICE_MAX} €. Prix affichés par zone, sans devis. Consultation gratuite de 30 min avec tir d'essai.`,
   },
   {
     path: '/reservation',
