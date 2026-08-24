@@ -191,9 +191,10 @@ function RGPD() {
 
       <H2>Destinataires</H2>
       <p>
-        Supabase Inc. (hébergement du compte et des rendez-vous), Vercel Inc. (hébergement du site),
-        Calendly LLC (prise de rendez-vous), Google LLC (Google Maps, uniquement après votre
-        consentement). Transferts hors UE encadrés par clauses contractuelles types.
+        Supabase Inc. (hébergement du compte et des rendez-vous), Vercel Inc. (hébergement du site
+        et mesure d&apos;audience), Calendly LLC (prise de rendez-vous), Google LLC (Google Maps).
+        La mesure d&apos;audience et Google Maps ne sont chargés qu&apos;après votre consentement.
+        Transferts hors UE encadrés par clauses contractuelles types.
       </p>
       <p>
         Le dossier patient n&apos;est communiqué à aucun de ces prestataires.
@@ -214,6 +215,15 @@ function Cookies() {
     <>
       <H2>Cookies nécessaires</H2>
       <p>Cookies d&apos;authentification Supabase (session utilisateur). Indispensables au fonctionnement.</p>
+
+      <H2>Mesure d&apos;audience</H2>
+      <p>
+        <strong>Vercel Analytics</strong> (Vercel Inc.) — fréquentation et pages consultées.
+        Cette mesure <strong>n&apos;utilise aucun cookie</strong> et ne permet ni de vous identifier,
+        ni de vous suivre d&apos;un site à l&apos;autre. Elle n&apos;est chargée qu&apos;après votre
+        accord, et les pages de votre espace personnel en sont exclues.{' '}
+        <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary-dark underline">Politique</a>
+      </p>
 
       <H2>Cookies tiers</H2>
       <ul className="ml-4 list-disc space-y-1">
