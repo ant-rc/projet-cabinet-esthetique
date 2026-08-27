@@ -4,6 +4,7 @@ import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
 import { getServiceById } from '@/data/pricing';
+import { CONSULTATION_MINUTES } from '@/data/calendly';
 import { formatDuration } from '@/utils/booking';
 import { formatDateDisplay } from '@/utils/date';
 import type { DbAppointment, AppointmentStatus } from '@/types';
@@ -133,10 +134,16 @@ export default function MesRdv() {
   }, [rescheduleId, appointments]);
 
   const rescheduleDuration = useMemo(() => {
-    if (!rescheduleTarget) return 30;
-    if (rescheduleTarget.is_first_consultation) return 30;
+    if (!rescheduleTarget) return CONSULTATION_MINUTES;
+
+    // Depuis la migration, chaque ligne porte la durée du rendez-vous complet.
+    // Lire la durée de la zone de la ligne sous-estimait toute réservation
+    // multi-zones : trois zones de 25 minutes donnaient 25 au lieu de 75.
+    if (rescheduleTarget.duration_minutes) return rescheduleTarget.duration_minutes;
+
+    if (rescheduleTarget.is_first_consultation) return CONSULTATION_MINUTES;
     const service = rescheduleTarget.service_id ? getServiceById(rescheduleTarget.service_id) : null;
-    return service?.duration ?? 30;
+    return service?.duration ?? CONSULTATION_MINUTES;
   }, [rescheduleTarget]);
 
   if (authLoading || loading) {

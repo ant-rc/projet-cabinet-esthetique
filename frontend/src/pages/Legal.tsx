@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import Seo from '@/components/Seo';
 import { staticMeta } from '@/lib/pageMeta';
+import { HOURS_SUMMARY } from '@/data/openingHours';
 
 type LegalTab = 'mentions' | 'cgu' | 'cgv' | 'rgpd' | 'cookies';
 
@@ -116,8 +117,7 @@ function CGV() {
 
       <H2>Rendez-vous</H2>
       <p>
-        Réservation en ligne ou par téléphone. Horaires : mardi–samedi 09h30–21h00,
-        dimanche 09h30–14h00, lundi fermé.
+        Réservation en ligne ou par téléphone. Horaires : {HOURS_SUMMARY}.
       </p>
 
       <H2>Annulation et déplacement</H2>

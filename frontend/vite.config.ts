@@ -6,8 +6,51 @@ import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import { ALL_PAGES, PRICE_MIN, PRICE_MAX } from './src/lib/pageMeta'
 import type { PageMeta } from './src/lib/pageMeta'
+import { OPENING_HOURS } from './src/data/openingHours'
 
 const SITE_URL = 'https://aa-lasermed.com'
+
+/** schema.org attend les jours en anglais, indexés comme Date.getDay(). */
+const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+
+/**
+ * Régénère le bloc openingHoursSpecification des données structurées à partir
+ * des horaires de l'application.
+ *
+ * Écrits en dur, ils annonçaient à Google une amplitude que l'agenda ne servait
+ * pas. Les jours partageant les mêmes heures sont regroupés, comme le veut la
+ * convention schema.org.
+ */
+function openingHoursJsonLd(indent: string): string {
+  const groups = new Map<string, number[]>()
+  for (const hours of OPENING_HOURS) {
+    const key = `${hours.opensAt}|${hours.closesAt}`
+    groups.set(key, [...(groups.get(key) ?? []), hours.dayOfWeek])
+  }
+
+  // Lundi en premier, dimanche en dernier, alors que getDay() met dimanche à 0.
+  const weekOrder = (day: number) => (day === 0 ? 7 : day)
+
+  const blocks = Array.from(groups.entries()).map(([key, days]) => {
+    const [opens, closes] = key.split('|')
+    const names = days
+      .slice()
+      .sort((a, b) => weekOrder(a) - weekOrder(b))
+      .map((day) => `"${SCHEMA_DAYS[day]}"`)
+    const dayOfWeek = names.length === 1 ? names[0] : `[${names.join(', ')}]`
+
+    return [
+      `${indent}  {`,
+      `${indent}    "@type": "OpeningHoursSpecification",`,
+      `${indent}    "dayOfWeek": ${dayOfWeek},`,
+      `${indent}    "opens": "${opens}",`,
+      `${indent}    "closes": "${closes}"`,
+      `${indent}  }`,
+    ].join('\n')
+  })
+
+  return `[\n${blocks.join(',\n')}\n${indent}]`
+}
 
 /** Priority and change frequency by route shape, for the sitemap. */
 function sitemapWeight(path: string): { priority: string; changefreq: string } {
@@ -90,6 +133,19 @@ function prerender(): Plugin {
       template = template.replace(
         /"priceRange": "[^"]*"/,
         `"priceRange": "${PRICE_MIN}€ - ${PRICE_MAX}€"`,
+      )
+
+      // Même raison pour les horaires : la seule source est data/openingHours.ts.
+      // Le premier `],` en début de ligne ferme le tableau extérieur ; celui de
+      // "dayOfWeek" est suivi de contenu sur sa propre ligne.
+      const hoursPattern = /"openingHoursSpecification": \[[\s\S]*?\n( *)\],/
+      const hoursMatch = template.match(hoursPattern)
+      if (!hoursMatch) {
+        throw new Error('prerender: openingHoursSpecification introuvable dans index.html')
+      }
+      template = template.replace(
+        hoursPattern,
+        `"openingHoursSpecification": ${openingHoursJsonLd(hoursMatch[1])},`,
       )
 
       for (const page of ALL_PAGES) {

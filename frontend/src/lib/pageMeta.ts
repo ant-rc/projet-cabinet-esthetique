@@ -1,4 +1,5 @@
 import { servicesData } from '../data/pricing'
+import { WEEKDAY_CLOSING, SUNDAY_OPENING, SUNDAY_CLOSING } from '../data/openingHours'
 import { faqPages } from '../data/faqPages'
 import { servicePath } from './serviceRoutes'
 import type { DbService } from '../types'
@@ -51,13 +52,13 @@ export const STATIC_PAGES: PageMeta[] = [
     path: '/reservation',
     title: 'Prendre rendez-vous — Épilation laser Magny-le-Hongre',
     description:
-      "Réservez votre séance d'épilation laser définitive à Magny-le-Hongre. Première consultation gratuite de 30 minutes, tir d'essai inclus. Du mardi au samedi jusqu'à 21h.",
+      `Réservez votre séance d'épilation laser définitive à Magny-le-Hongre. Première consultation gratuite de 30 minutes, tir d'essai inclus. Ouvert 7j/7, en semaine jusqu'à ${WEEKDAY_CLOSING}.`,
   },
   {
     path: '/contact',
     title: 'Contact et accès — AA Laser Med, Magny-le-Hongre',
     description:
-      "AA Laser Med, 49 rue du Bois de la Garenne, 77700 Magny-le-Hongre. Gare de Val d'Europe, bus 2234, parking gratuit. Du mardi au samedi jusqu'à 21h, dimanche matin.",
+      `AA Laser Med, 49 rue du Bois de la Garenne, 77700 Magny-le-Hongre. Gare de Val d'Europe, bus 2234, parking gratuit. Ouvert 7j/7, en semaine jusqu'à ${WEEKDAY_CLOSING}, dimanche ${SUNDAY_OPENING}-${SUNDAY_CLOSING}.`,
   },
   {
     path: '/faq',

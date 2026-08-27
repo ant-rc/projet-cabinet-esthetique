@@ -6,9 +6,16 @@ import { useScrollReveal } from '@/hooks/useScrollReveal';
 import Seo from '@/components/Seo';
 import { staticMeta } from '@/lib/pageMeta';
 import { supabase } from '@/lib/supabase';
-import { getServicesByGender, getServicesByGenderAndCategory, getCategoriesForGender, getServiceById } from '@/data/pricing';
+import { getServicesByGender, getServicesByGenderAndCategory, getCategoriesForGender, getServiceById, centerInfo } from '@/data/pricing';
 import { calculateTotalPrice, calculateTotalDuration, formatDuration } from '@/utils/booking';
-import { getCalendlyEventUrl, buildCalendlyUtm } from '@/data/calendly';
+import {
+  getCalendlyEventUrl,
+  buildCalendlyUtm,
+  exceedsOnlineBooking,
+  slotsForDuration,
+  CONSULTATION_MINUTES,
+} from '@/data/calendly';
+import { HOURS_SUMMARY } from '@/data/openingHours';
 import type { Gender, ServiceCategory } from '@/types';
 
 const REASSURANCE_ITEMS = [
@@ -54,8 +61,22 @@ export default function Booking() {
   );
 
   const totalDuration = useMemo(
-    () => isConsultation ? 30 : calculateTotalDuration(selectedServiceIds),
+    () => isConsultation ? CONSULTATION_MINUTES : calculateTotalDuration(selectedServiceIds),
     [selectedServiceIds, isConsultation],
+  );
+
+  /**
+   * Créneaux d'une heure réellement occupés, arrondis à l'heure supérieure.
+   * C'est cette valeur qui détermine le type d'événement Calendly réservé.
+   */
+  const bookedSlots = useMemo(
+    () => isConsultation ? 1 : slotsForDuration(totalDuration),
+    [isConsultation, totalDuration],
+  );
+
+  const tooLongForOnline = useMemo(
+    () => !isConsultation && selectedServiceIds.length > 0 && exceedsOnlineBooking(totalDuration),
+    [isConsultation, selectedServiceIds, totalDuration],
   );
 
   const selectedServiceNames = useMemo(() => {
@@ -101,8 +122,16 @@ export default function Booking() {
     }
   }, [showCalendar]);
 
-  // Fetch event start_time from Calendly API via Supabase Edge Function (keeps PAT server-side)
-  async function fetchEventDateTime(eventUri: string): Promise<{ date: string; time: string } | null> {
+  /**
+   * Lit l'événement réellement créé côté Calendly, via l'Edge Function qui garde
+   * le jeton d'accès côté serveur.
+   *
+   * L'heure de fin est la seule mesure fiable de ce que l'agenda a bloqué : la
+   * durée théorique du panier peut différer du type d'événement réservé.
+   */
+  async function fetchEventDetails(
+    eventUri: string,
+  ): Promise<{ date: string; time: string; durationMinutes: number } | null> {
     if (!eventUri) return null;
     try {
       const eventId = eventUri.split('/').pop();
@@ -110,12 +139,14 @@ export default function Booking() {
         method: 'GET',
       });
       if (error) return null;
-      const evt = (data as { event?: { startTime?: string } })?.event;
+      const evt = (data as { event?: { startTime?: string; endTime?: string } })?.event;
       if (!evt?.startTime) return null;
       const start = new Date(evt.startTime);
+      const end = evt.endTime ? new Date(evt.endTime) : null;
       return {
         date: `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}-${String(start.getDate()).padStart(2, '0')}`,
         time: `${String(start.getHours()).padStart(2, '0')}:${String(start.getMinutes()).padStart(2, '0')}`,
+        durationMinutes: end ? Math.round((end.getTime() - start.getTime()) / 60000) : 0,
       };
     } catch {
       return null;
@@ -131,12 +162,17 @@ export default function Booking() {
           : 'Rendez-vous confirmé ! Vérifiez votre e-mail.',
       );
 
-      // Fetch real date/time from Calendly API
+      // Fetch real date/time/duration from Calendly API
       const eventUri = e.data?.payload?.event?.uri ?? '';
-      const slot = await fetchEventDateTime(eventUri);
+      const slot = await fetchEventDetails(eventUri);
 
       const realDate = slot?.date ?? (() => { const n = new Date(); return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}-${String(n.getDate()).padStart(2, '0')}`; })();
       const realTime = slot?.time ?? (() => { const n = new Date(); return `${String(n.getHours()).padStart(2, '0')}:${String(n.getMinutes()).padStart(2, '0')}`; })();
+
+      // Repli sur la durée du panier si l'appel à Calendly échoue : mieux vaut une
+      // durée théorique qu'une colonne vide, qui rendrait le rendez-vous invisible
+      // à tout calcul de chevauchement.
+      const bookedDuration = slot?.durationMinutes || totalDuration;
 
       // Save to Supabase if authenticated
       if (isAuthenticated && session?.user) {
@@ -149,8 +185,13 @@ export default function Booking() {
             status: 'confirmed',
             is_first_consultation: true,
             notes: 'Booked via Calendly',
+            duration_minutes: bookedDuration,
+            calendly_event_uri: eventUri || null,
           });
         } else {
+          // Une ligne par zone, mais un seul rendez-vous : la durée portée par
+          // chaque ligne est celle du groupe entier, et calendly_event_uri permet
+          // de les regrouper. Sommer les durées des lignes compterait double.
           const inserts = selectedServiceIds.map((serviceId) => ({
             user_id: session.user.id,
             service_id: serviceId,
@@ -159,6 +200,8 @@ export default function Booking() {
             status: 'confirmed',
             is_first_consultation: false,
             notes: `Booked via Calendly — ${selectedServiceNames.join(', ')}`,
+            duration_minutes: bookedDuration,
+            calendly_event_uri: eventUri || null,
           }));
           await supabase.from('appointments').insert(inserts);
         }
@@ -170,7 +213,7 @@ export default function Booking() {
       setIsConsultation(false);
       setSelectedServiceIds([]);
       setSelectedCategory(null);
-    }, [isAuthenticated, session, isConsultation, selectedServiceIds, selectedServiceNames]),
+    }, [isAuthenticated, session, isConsultation, selectedServiceIds, selectedServiceNames, totalDuration]),
   });
 
   return (
@@ -324,9 +367,16 @@ export default function Booking() {
                   <div>
                     <p className="text-sm font-semibold text-text">
                       {isConsultation
-                        ? 'Consultation gratuite — 30 min'
+                        ? `Consultation gratuite — ${CONSULTATION_MINUTES} min`
                         : `${selectedServiceIds.length} zone${selectedServiceIds.length > 1 ? 's' : ''} — ${formatDuration(totalDuration)}`}
                     </p>
+                    {!tooLongForOnline && (
+                      <p className="mt-1 text-xs text-text-light">
+                        {bookedSlots > 1
+                          ? `${bookedSlots} créneaux consécutifs réservés pour vous`
+                          : 'Un créneau réservé pour vous'}
+                      </p>
+                    )}
                     {!isConsultation && selectedServiceNames.length > 0 && (
                       <p className="mt-1 text-xs text-text-light">{selectedServiceNames.join(', ')}</p>
                     )}
@@ -336,8 +386,17 @@ export default function Booking() {
                   </span>
                 </div>
 
+                {tooLongForOnline && (
+                  <p className="mt-4 rounded-xl bg-white/70 p-3 text-xs leading-relaxed text-text-light">
+                    Cette sélection dépasse ce que nous pouvons réserver en ligne. Appelez-nous
+                    au <a href={`tel:${centerInfo.phone.replace(/\s/g, '')}`} className="font-semibold text-primary-dark underline">{centerInfo.phone}</a>,
+                    nous organiserons la séance sur mesure.
+                  </p>
+                )}
+
                 <button
                   type="button"
+                  disabled={tooLongForOnline}
                   onClick={() => {
                     if (!calendlyUrl) {
                       toast.error('Le calendrier n\'est pas encore configuré.');
@@ -345,7 +404,7 @@ export default function Booking() {
                     }
                     setShowCalendar(true);
                   }}
-                  className="mt-4 w-full rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl"
+                  className="mt-4 w-full rounded-full bg-primary px-8 py-3.5 text-sm font-semibold text-white shadow-lg transition-all duration-300 hover:-translate-y-0.5 hover:bg-primary-dark hover:shadow-xl disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:translate-y-0"
                 >
                   Choisir un créneau
                 </button>
@@ -407,7 +466,7 @@ export default function Booking() {
         {/* Horaires */}
         <div className="mt-8 rounded-xl border border-primary-light/50 bg-white p-5 text-center">
           <p className="text-sm text-text-light">
-            <strong className="text-text">Horaires :</strong> Mardi – Samedi 9h30–21h00 · Dimanche 9h30–14h00 · Lundi fermé
+            <strong className="text-text">Horaires :</strong> {HOURS_SUMMARY}
           </p>
         </div>
       </div>
