@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 import { useAuth } from '@/context/AuthContext';
 import { supabase } from '@/lib/supabase';
-import { getServiceById } from '@/data/pricing';
+import { getServiceById, centerInfo } from '@/data/pricing';
 import { CONSULTATION_MINUTES } from '@/data/calendly';
 import { formatDuration } from '@/utils/booking';
 import { formatDateDisplay } from '@/utils/date';
@@ -28,13 +28,23 @@ const STATUS_COLORS: Record<AppointmentStatus, string> = {
   no_show: 'bg-gray-100 text-gray-700',
 };
 
-function canReschedule(appointmentDate: string, appointmentTime: string): boolean {
+/**
+ * Préavis en dessous duquel une patiente ne peut plus toucher à son rendez-vous.
+ *
+ * La même règle couvre l'annulation et le déplacement, et ce n'est pas un excès
+ * de zèle : déplacer un rendez-vous libère le créneau d'origine exactement comme
+ * une annulation. Un préavis plus court sur le déplacement suffirait à contourner
+ * celui de l'annulation.
+ */
+const CHANGE_NOTICE_HOURS = 48;
+
+/** Vrai si le rendez-vous est encore assez loin pour être annulé ou déplacé. */
+function canChange(appointmentDate: string, appointmentTime: string): boolean {
   const [y, m, d] = appointmentDate.split('-').map(Number);
   const [h, min] = appointmentTime.split(':').map(Number);
   const appointmentDateTime = new Date(y, m - 1, d, h, min);
-  const now = new Date();
-  const diff = appointmentDateTime.getTime() - now.getTime();
-  return diff > 24 * 60 * 60 * 1000;
+  const diff = appointmentDateTime.getTime() - Date.now();
+  return diff > CHANGE_NOTICE_HOURS * 60 * 60 * 1000;
 }
 
 export default function MesRdv() {
@@ -46,7 +56,7 @@ export default function MesRdv() {
 
   // Reschedule state
   const [rescheduleId, setRescheduleId] = useState<string | null>(null);
-  const [rescheduleBlockedId, setRescheduleBlockedId] = useState<string | null>(null);
+  const [changeBlockedId, setChangeBlockedId] = useState<string | null>(null);
   const [newDate, setNewDate] = useState('');
   const [newTime, setNewTime] = useState('');
   const [isRescheduling, setIsRescheduling] = useState(false);
@@ -93,9 +103,17 @@ export default function MesRdv() {
     setCancelConfirmId(null);
   }
 
+  function handleCancelClick(apt: DbAppointment) {
+    if (!canChange(apt.date, apt.time)) {
+      setChangeBlockedId(apt.id);
+      return;
+    }
+    setCancelConfirmId(apt.id);
+  }
+
   function handleRescheduleClick(apt: DbAppointment) {
-    if (!canReschedule(apt.date, apt.time)) {
-      setRescheduleBlockedId(apt.id);
+    if (!canChange(apt.date, apt.time)) {
+      setChangeBlockedId(apt.id);
       return;
     }
     setRescheduleId(apt.id);
@@ -225,7 +243,7 @@ export default function MesRdv() {
                         {canCancel && (
                           <button
                             type="button"
-                            onClick={() => setCancelConfirmId(apt.id)}
+                            onClick={() => handleCancelClick(apt)}
                             className="rounded-full border border-red-200 px-4 py-1.5 text-xs font-medium text-red-600 transition-all duration-200 hover:bg-red-50"
                           >
                             Annuler
@@ -278,23 +296,28 @@ export default function MesRdv() {
       )}
 
       {/* Reschedule blocked modal (< 24h) */}
-      {rescheduleBlockedId && (
+      {changeBlockedId && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 backdrop-blur-sm"
-          onClick={() => setRescheduleBlockedId(null)}
+          onClick={() => setChangeBlockedId(null)}
           role="dialog"
           aria-modal="true"
-          aria-label="Déplacement impossible"
+          aria-label="Modification impossible"
         >
           <div className="step-enter w-full max-w-md rounded-2xl border border-rose-soft bg-white p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="font-serif text-lg font-semibold text-text">Déplacement impossible</h3>
-            <p className="mt-4 text-sm text-text-light">
-              Impossible de déplacer ce rendez-vous à moins de 24h de l&apos;horaire prévu. Veuillez nous contacter directement pour toute modification.
+            <h3 className="font-serif text-lg font-semibold text-text">Modification impossible</h3>
+            <p className="mt-4 text-sm leading-relaxed text-text-light">
+              Un rendez-vous ne peut plus être annulé ni déplacé à moins de {CHANGE_NOTICE_HOURS}h
+              de l&apos;horaire prévu. Appelez-nous au{' '}
+              <a href={`tel:${centerInfo.phone.replace(/\s/g, '')}`} className="font-semibold text-primary-dark underline">
+                {centerInfo.phone}
+              </a>{' '}
+              et nous verrons ensemble.
             </p>
             <div className="mt-6 flex justify-end">
               <button
                 type="button"
-                onClick={() => setRescheduleBlockedId(null)}
+                onClick={() => setChangeBlockedId(null)}
                 className="rounded-full bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md transition-all duration-300 hover:bg-primary-dark"
               >
                 Compris
