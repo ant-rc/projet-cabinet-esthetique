@@ -66,7 +66,7 @@ export default function Booking() {
   );
 
   /**
-   * Créneaux d'une heure réellement occupés, arrondis à l'heure supérieure.
+   * Créneaux réellement occupés, arrondis au pas supérieur de la grille.
    * C'est cette valeur qui détermine le type d'événement Calendly réservé.
    */
   const bookedSlots = useMemo(

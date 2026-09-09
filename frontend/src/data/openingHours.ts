@@ -12,9 +12,23 @@
  */
 
 /**
- * Pas de la grille : une heure pleine.
+ * Pas de la grille de réservation.
+ *
+ * Une demi-heure, comme l'incrément de départ réglé dans Calendly. Ce pas
+ * détermine l'arrondi de la durée facturée en durée réservée : une séance de
+ * 1h25 occupe 1h30, là où un pas d'une heure lui en aurait fait bloquer deux.
  */
-export const SLOT_STEP_MINUTES = 60;
+export const SLOT_STEP_MINUTES = 30;
+
+/**
+ * Durée de séance servant à dériver l'heure de fermeture du dernier créneau.
+ *
+ * Une séance d'une heure démarrée au dernier créneau se termine à la fermeture.
+ * Volontairement distincte de `SLOT_STEP_MINUTES` : le pas de la grille et la
+ * durée d'une séance type n'ont pas de raison d'être égaux, et les confondre
+ * placerait la fermeture une demi-heure trop tôt.
+ */
+const REFERENCE_SESSION_MINUTES = 60;
 
 export interface OpeningHours {
   /** 0 = dimanche, 1 = lundi, ... 6 = samedi — convention Date.getDay(). */
@@ -28,12 +42,15 @@ export interface OpeningHours {
    */
   lastSlotAt: string;
   /**
-   * Heure de fin de la dernière séance d'une heure : `lastSlotAt` + le pas.
+   * Heure de fin d'une séance d'une heure démarrée au dernier créneau.
    *
-   * Dérivée, jamais saisie. Elle ne sert qu'au calcul de tenue de séance —
-   * une séance de deux heures doit finir avant, son dernier départ recule donc
-   * d'une heure. Volontairement absente de l'affichage : annoncer 20h alors que
-   * plus rien n'est réservable à cette heure enverrait des patientes pour rien.
+   * Dérivée, jamais saisie. Elle ne sert qu'au calcul de tenue de séance — une
+   * séance plus longue doit finir avant, son dernier départ recule donc.
+   * C'est aussi la fenêtre de disponibilité à saisir dans Calendly, qui
+   * raisonne en heure de fin et non en heure de dernier départ.
+   *
+   * Volontairement absente de l'affichage : annoncer 20h alors que plus rien
+   * n'est réservable à cette heure enverrait des patientes pour rien.
    */
   closesAt: string;
 }
@@ -48,7 +65,7 @@ function addMinutes(time: string, minutes: number): string {
 }
 
 function day(opensAt: string, lastSlotAt: string) {
-  return { opensAt, lastSlotAt, closesAt: addMinutes(lastSlotAt, SLOT_STEP_MINUTES) };
+  return { opensAt, lastSlotAt, closesAt: addMinutes(lastSlotAt, REFERENCE_SESSION_MINUTES) };
 }
 
 const WEEKDAY = day('10:00', '19:00');

@@ -111,17 +111,31 @@ export function generateTimeSlots(date: string, durationMinutes: number = 30): {
   const slot = OPENING_HOURS.find((a) => a.dayOfWeek === dayOfWeek);
   if (!slot) return []; // Jour de fermeture
 
-  const [startH, startM] = slot.opensAt.split(':').map(Number);
-  const [endH, endM] = slot.closesAt.split(':').map(Number);
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const startMinutes = toMinutes(slot.opensAt);
+  const lastSlotMinutes = toMinutes(slot.lastSlotAt);
+  const endMinutes = toMinutes(slot.closesAt);
 
   const slots: { time: string; available: boolean }[] = [];
 
-  // La borne est `mins + durationMinutes <= endMinutes` et non `mins < endMinutes` :
-  // une séance doit tenir entièrement avant la fermeture, sinon le dernier créneau
-  // de la journée déborde.
-  for (let mins = startMinutes; mins + durationMinutes <= endMinutes; mins += SLOT_STEP_MINUTES) {
+  // Deux bornes, et il faut les deux.
+  //
+  // `mins <= lastSlotMinutes` tient la promesse affichée : aucune séance ne
+  // démarre après l'heure annoncée comme dernier créneau, même une séance
+  // courte qui aurait matériellement le temps de tenir.
+  //
+  // `mins + durationMinutes <= endMinutes` fait reculer le dernier départ des
+  // séances longues, qui doivent finir avant la fermeture. Sans elle, une
+  // séance de deux heures partirait au dernier créneau et déborderait d'une
+  // heure.
+  for (
+    let mins = startMinutes;
+    mins <= lastSlotMinutes && mins + durationMinutes <= endMinutes;
+    mins += SLOT_STEP_MINUTES
+  ) {
     const h = Math.floor(mins / 60);
     const min = mins % 60;
     const time = `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
