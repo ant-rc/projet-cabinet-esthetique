@@ -16,11 +16,17 @@
 //
 // Secrets nécessaires :
 //   CALENDLY_PAT               déjà posé pour calendly-events
-//   REMINDER_CRON_SECRET       à poser, voir ci-dessous
+//   REMINDER_CRON_SECRET       jeton d'appel, voir ci-dessous
+//   BREVO_API_KEY              clé transactionnelle Brevo
+//   BREVO_SENDER_EMAIL         optionnel, défaut contact@aa-lasermed.com
 //   SUPABASE_URL               fourni par la plateforme
 //   SUPABASE_SERVICE_ROLE_KEY  fourni par la plateforme, usage interne seulement
 //
 //   supabase secrets set REMINDER_CRON_SECRET=$(openssl rand -hex 32)
+//   supabase secrets set BREVO_API_KEY=xkeysib-...
+//
+// L'expéditeur doit appartenir à un domaine authentifié chez Brevo, SPF et
+// DKIM. Sans cela Brevo refuse l'envoi ou le message part en indésirables.
 //
 // Appel. `dryRun` vaut true par défaut : il faut demander explicitement l'envoi
 // réel, jamais l'inverse.
@@ -84,6 +90,7 @@ interface CalendlyInvitee {
   name: string;
   email: string;
   status: string;
+  reschedule_url: string;
 }
 
 type Verdict =
@@ -153,18 +160,111 @@ function heureDEnvoi(pointMedian: Date): Date {
   return instant;
 }
 
+/** '5 octobre 2026 à 12h00', heure de Paris. */
+function dateEnFrancais(instant: Date): string {
+  const jour = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris', weekday: 'long', day: 'numeric', month: 'long', year: 'numeric',
+  }).format(instant);
+  const heure = new Intl.DateTimeFormat('fr-FR', {
+    timeZone: 'Europe/Paris', hour: '2-digit', minute: '2-digit', hour12: false,
+  }).format(instant).replace(':', 'h');
+  return `${jour} à ${heure}`;
+}
+
+function echapper(texte: string): string {
+  return texte
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
+}
+
 /**
- * Envoi réel du rappel.
+ * Corps du rappel.
  *
- * Volontairement non implémenté : le fournisseur d'e-mail n'est pas tranché et
- * le domaine n'est pas encore authentifié. Échouer bruyamment vaut mieux que
- * renvoyer un succès silencieux qui laisserait croire que les rappels partent.
+ * Le contenu porte sur ce qui se joue sur des **semaines**, pas sur des heures :
+ * c'est ce qui justifie ce rappel plutôt qu'un de plus la veille. Le soleil et
+ * l'épilation à la pince compromettent une séance des semaines à l'avance ; se
+ * raser la veille relève du rappel J-2, qui vit dans Calendly.
+ *
+ * [À VALIDER PAR ALINE] Comme tout contenu adressé aux patientes.
  */
-function envoyer(_destinataire: string, _evenement: CalendlyEvent): never {
-  throw new Error(
-    "Aucun fournisseur d'e-mail configuré. Utilisez dryRun=true tant que le " +
-    'domaine aa-lasermed.com n\'est pas authentifié (SPF et DKIM).',
+function corpsDuRappel(prenom: string, rendezVous: Date, lienReport: string) {
+  const quand = dateEnFrancais(rendezVous);
+  const texte = [
+    `Bonjour ${prenom},`,
+    '',
+    `Votre séance chez AA LASERMed approche : ${quand}.`,
+    '',
+    "D'ici là, deux choses comptent pour que la séance donne son plein effet :",
+    '',
+    "  • pas d'exposition au soleil ni d'autobronzant sur la zone à traiter ;",
+    '  • pas de pince à épiler ni de cire. Le rasoir, lui, reste permis.',
+    '',
+    'Un empêchement ? Vous pouvez déplacer votre rendez-vous ici :',
+    lienReport,
+    '',
+    'À très bientôt,',
+    'AA LASERMed',
+  ].join('\n');
+
+  const html = [
+    `<p>Bonjour ${echapper(prenom)},</p>`,
+    `<p>Votre séance chez AA LASERMed approche : <strong>${echapper(quand)}</strong>.</p>`,
+    "<p>D'ici là, deux choses comptent pour que la séance donne son plein effet :</p>",
+    '<ul>',
+    "<li>pas d'exposition au soleil ni d'autobronzant sur la zone à traiter ;</li>",
+    '<li>pas de pince à épiler ni de cire. Le rasoir, lui, reste permis.</li>',
+    '</ul>',
+    `<p>Un empêchement ? Vous pouvez <a href="${echapper(lienReport)}">déplacer votre rendez-vous</a>.</p>`,
+    '<p>À très bientôt,<br>AA LASERMed</p>',
+  ].join('\n');
+
+  return { texte, html, sujet: `Votre séance du ${quand.split(' à ')[0]}` };
+}
+
+/**
+ * Envoi réel via Brevo.
+ *
+ * L'expéditeur doit être une adresse du domaine authentifié. Envoyer depuis une
+ * adresse gmail.com échouerait DMARC : Brevo ne peut pas signer un domaine
+ * qui ne lui appartient pas. La réponse revient en revanche vers la boîte réelle
+ * du cabinet, celle déclarée sur le compte Calendly.
+ */
+async function envoyer(
+  invite: CalendlyInvitee,
+  evenement: CalendlyEvent,
+  repondreA: string,
+): Promise<void> {
+  // @ts-expect-error Deno global
+  const cle = Deno.env.get('BREVO_API_KEY') ?? '';
+  if (!cle) throw new Error('BREVO_API_KEY absent : aucun rappel ne peut partir.');
+
+  // @ts-expect-error Deno global
+  const expediteur = Deno.env.get('BREVO_SENDER_EMAIL') ?? 'contact@aa-lasermed.com';
+
+  const prenom = (invite.name ?? '').trim().split(/\s+/)[0] || 'et bienvenue';
+  const { texte, html, sujet } = corpsDuRappel(
+    prenom, new Date(evenement.start_time), invite.reschedule_url,
   );
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: { 'api-key': cle, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      sender: { name: 'AA LASERMed', email: expediteur },
+      replyTo: { name: 'AA LASERMed', email: repondreA },
+      to: [{ email: invite.email, name: invite.name }],
+      subject: sujet,
+      textContent: texte,
+      htmlContent: html,
+      tags: ['rappel-mi-parcours'],
+    }),
+  });
+
+  if (!res.ok) {
+    // Le corps de l'erreur porte la cause exacte, expéditeur non validé le plus
+    // souvent. La perdre rendrait la panne indéchiffrable dans six mois.
+    throw new Error(`Brevo ${res.status} : ${(await res.text()).slice(0, 300)}`);
+  }
 }
 
 async function calendly<T>(chemin: string, pat: string): Promise<T> {
@@ -231,14 +331,38 @@ Deno.serve(async (req: Request) => {
 
   const url = new URL(req.url);
   const dryRun = url.searchParams.get('dryRun') !== 'false';
+  const adresseEssai = url.searchParams.get('testEmail');
 
   try {
-    const moi = await calendly<{ resource: { uri: string; email: string } }>(
+    const moi = await calendly<{ resource: { uri: string; email: string; scheduling_url: string } }>(
       `${CALENDLY_API}/users/me`, pat,
     );
     const utilisateur = moi.resource.uri;
     // La cliente ne doit pas recevoir les rappels de ses propres essais.
     const adressesExclues = new Set([moi.resource.email.toLowerCase()]);
+
+    // Envoi d'essai : éprouve tout le chemin Brevo sans dépendre d'un
+    // rendez-vous réellement dû, et sans écrire dans le journal.
+    //
+    // Sans lui, ce chemin ne serait exercé pour la première fois que le jour où
+    // une vraie patiente doit recevoir un rappel, sans personne pour regarder.
+    // Exige dryRun=false : on n'envoie jamais un e-mail par accident.
+    if (adresseEssai) {
+      if (dryRun) {
+        return json({ error: 'Un envoi d\'essai est un envoi : ajoutez dryRun=false.' }, 400);
+      }
+      const faux: CalendlyEvent = {
+        uri: 'essai', name: 'essai', status: 'active',
+        created_at: new Date().toISOString(),
+        start_time: new Date(Date.now() + 20 * 24 * HEURE).toISOString(),
+      };
+      await envoyer(
+        { name: 'Essai', email: adresseEssai, status: 'active', reschedule_url: moi.resource.scheduling_url },
+        faux,
+        moi.resource.email,
+      );
+      return json({ mode: 'envoi d\'essai', destinataire: adresseEssai, envoye: true });
+    }
 
     const evenements = await evenementsAVenir(pat, utilisateur);
 
@@ -330,7 +454,11 @@ Deno.serve(async (req: Request) => {
       base.destinataire = invite.email;
 
       if (!dryRun) {
-        envoyer(invite.email, ev);
+        // Envoyer d'abord, journaliser ensuite. Dans l'autre sens, un envoi
+        // raté laisserait une ligne « envoyé » et la patiente ne recevrait
+        // jamais rien. Ici le pire cas est un doublon, borné par le rattrapage
+        // de 48h, et un doublon vaut mieux qu'un silence.
+        await envoyer(invite, ev, moi.resource.email);
         await supabase.from('reminders_sent').insert({
           calendly_event_uri: ev.uri,
           kind: KIND,
