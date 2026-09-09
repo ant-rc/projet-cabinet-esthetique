@@ -241,7 +241,7 @@ export default function Booking() {
             time: realTime,
             status: 'confirmed',
             is_first_consultation: false,
-            notes: `Booked via Calendly — ${selectedServiceNames.join(', ')}`,
+            notes: `Booked via Calendly: ${selectedServiceNames.join(', ')}`,
             duration_minutes: bookedDuration,
             calendly_event_uri: eventUri || null,
           }));
@@ -409,8 +409,8 @@ export default function Booking() {
                   <div>
                     <p className="text-sm font-semibold text-text">
                       {isConsultation
-                        ? `Consultation gratuite — ${CONSULTATION_MINUTES} min`
-                        : `${selectedServiceIds.length} zone${selectedServiceIds.length > 1 ? 's' : ''} — ${formatDuration(totalDuration)}`}
+                        ? `Consultation gratuite · ${CONSULTATION_MINUTES} min`
+                        : `${selectedServiceIds.length} zone${selectedServiceIds.length > 1 ? 's' : ''} · ${formatDuration(totalDuration)}`}
                     </p>
                     {!tooLongForOnline && (
                       <p className="mt-1 text-xs text-text-light">
@@ -476,7 +476,7 @@ export default function Booking() {
                   {isConsultation ? 'Consultation gratuite' : selectedServiceNames.join(', ')}
                 </span>
                 <span className="font-bold text-primary-dark">
-                  {isConsultation ? 'Gratuit' : `${totalPrice}\u20ac`} — {formatDuration(totalDuration)}
+                  {isConsultation ? 'Gratuit' : `${totalPrice}\u20ac`} · {formatDuration(totalDuration)}
                 </span>
               </div>
             </div>

@@ -24,8 +24,8 @@ function MentionsLegales() {
   return (
     <>
       <H2>Éditeur</H2>
-      <p>AA LASERMED — SAS au capital de 1 000 €</p>
-      <p>RCS Meaux 100 897 057 — EUID FR7701.100897057</p>
+      <p>AA LASERMED, SAS au capital de 1 000 €</p>
+      <p>RCS Meaux 100 897 057 · EUID FR7701.100897057</p>
       <p>49 rue du Bois de la Garenne, 77700 Magny-le-Hongre</p>
       <p>E-mail : aalasermed@gmail.com</p>
 
@@ -33,9 +33,9 @@ function MentionsLegales() {
       <p>Mme Aline Tosun, Présidente.</p>
 
       <H2>Hébergement</H2>
-      <p>Vercel Inc. — 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
+      <p>Vercel Inc., 440 N Barranca Ave #4133, Covina, CA 91723, États-Unis.</p>
       <p>
-        Données applicatives : Supabase Inc. — 970 Toa Payoh North #07-04, Singapour.
+        Données applicatives : Supabase Inc., 970 Toa Payoh North #07-04, Singapour.
         Données stockées dans l&apos;Union européenne (région Irlande).
       </p>
 
@@ -155,7 +155,7 @@ function RGPD() {
   return (
     <>
       <H2>Responsable du traitement</H2>
-      <p>AA LASERMED — 49 rue du Bois de la Garenne, 77700 Magny-le-Hongre — aalasermed@gmail.com.</p>
+      <p>AA LASERMED, 49 rue du Bois de la Garenne, 77700 Magny-le-Hongre · aalasermed@gmail.com.</p>
 
       <H2>Données collectées</H2>
       <ul className="ml-4 list-disc space-y-1">
@@ -177,7 +177,7 @@ function RGPD() {
         serveurs situés dans l&apos;Union européenne.
       </p>
       <p>
-        Le dossier patient — questionnaire médical, antécédents et consentement — n&apos;est pas
+        Le dossier patient (questionnaire médical, antécédents et consentement) n&apos;est pas
         transmis à l&apos;hébergeur du site&nbsp;: il est enregistré localement, sur le poste
         utilisé au cabinet par la praticienne, et ne quitte pas cet appareil.
       </p>
@@ -204,7 +204,7 @@ function RGPD() {
       <p>
         Accès, rectification, effacement, limitation, portabilité, opposition, retrait du consentement.
         Contact : aalasermed@gmail.com.
-        Réclamation : CNIL — cnil.fr — 3 Place de Fontenoy, 75334 Paris Cedex 07.
+        Réclamation : CNIL, cnil.fr, 3 Place de Fontenoy, 75334 Paris Cedex 07.
       </p>
     </>
   );
@@ -218,7 +218,7 @@ function Cookies() {
 
       <H2>Mesure d&apos;audience</H2>
       <p>
-        <strong>Vercel Analytics</strong> (Vercel Inc.) — fréquentation et pages consultées.
+        <strong>Vercel Analytics</strong> (Vercel Inc.) : fréquentation et pages consultées.
         Cette mesure <strong>n&apos;utilise aucun cookie</strong> et ne permet ni de vous identifier,
         ni de vous suivre d&apos;un site à l&apos;autre. Elle n&apos;est chargée qu&apos;après votre
         accord, et les pages de votre espace personnel en sont exclues.{' '}
@@ -228,15 +228,15 @@ function Cookies() {
       <H2>Cookies tiers</H2>
       <ul className="ml-4 list-disc space-y-1">
         <li>
-          <strong>Google Maps</strong> (Google LLC) — carte interactive sur la page Contact.{' '}
+          <strong>Google Maps</strong> (Google LLC) : carte interactive sur la page Contact.{' '}
           <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary-dark underline">Politique</a>
         </li>
         <li>
-          <strong>Vercel</strong> (Vercel Inc.) — hébergement et performances.{' '}
+          <strong>Vercel</strong> (Vercel Inc.) : hébergement et performances.{' '}
           <a href="https://vercel.com/legal/privacy-policy" target="_blank" rel="noopener noreferrer" className="text-primary-dark underline">Politique</a>
         </li>
         <li>
-          <strong>Supabase</strong> (Supabase Inc.) — authentification.{' '}
+          <strong>Supabase</strong> (Supabase Inc.) : authentification.{' '}
           <a href="https://supabase.com/privacy" target="_blank" rel="noopener noreferrer" className="text-primary-dark underline">Politique</a>
         </li>
       </ul>

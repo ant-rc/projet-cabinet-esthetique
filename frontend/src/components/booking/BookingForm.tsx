@@ -473,7 +473,7 @@ export default function BookingForm() {
           <div className="flex items-center justify-between">
             <h3 className="font-serif text-xl font-semibold text-text">Choisissez votre créneau</h3>
             <span className="rounded-full bg-gradient-to-r from-nude to-rose-soft/50 px-4 py-1.5 text-sm font-semibold text-primary-dark shadow-sm">
-              {isFirstConsultation ? 'Consultation — Gratuit' : `${formatDuration(totalDuration)} — ${totalPrice}€`}
+              {isFirstConsultation ? 'Consultation · Gratuit' : `${formatDuration(totalDuration)} · ${totalPrice}€`}
             </span>
           </div>
 

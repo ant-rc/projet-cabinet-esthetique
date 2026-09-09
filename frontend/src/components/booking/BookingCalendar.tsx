@@ -72,7 +72,7 @@ export default function BookingCalendar({
 
   const monthLabel = (() => {
     const months = new Set(weekDays.map((d) => `${MONTH_NAMES[d.getMonth()]} ${d.getFullYear()}`));
-    return Array.from(months).join(' — ');
+    return Array.from(months).join(' · ');
   })();
 
   const availableCount = slots.filter((s) => s.available).length;

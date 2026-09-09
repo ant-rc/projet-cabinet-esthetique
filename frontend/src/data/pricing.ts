@@ -180,7 +180,7 @@ export const faqData: FAQItem[] = [
   },
   {
     question: 'Est-ce douloureux ?',
-    answer: 'La sensation est souvent comparée à un léger picotement. Le système de refroidissement CryoAir intégré au GentleMax Pro diffuse de l’air froid en continu, ce qui réduit considérablement la sensation de chaleur. Une crème anesthésiante (4€/tube, non remboursée) peut être conseillée pour le maillot, les aisselles ou les zones sensibles — à appliquer 1h avant la séance.',
+    answer: 'La sensation est souvent comparée à un léger picotement. Le système de refroidissement CryoAir intégré au GentleMax Pro diffuse de l’air froid en continu, ce qui réduit considérablement la sensation de chaleur. Une crème anesthésiante (4€/tube, non remboursée) peut être conseillée pour le maillot, les aisselles ou les zones sensibles, à appliquer 1h avant la séance.',
   },
   {
     question: 'L’épilation laser est-elle adaptée à tous les types de peau ?',
@@ -202,7 +202,7 @@ export const centerInfo = {
   geo: { latitude: 48.8667, longitude: 2.7833 },
   access: {
     gare: 'Gare de Val d\'Europe',
-    bus: 'Bus 2234 — Arrêt La Boiserie (4 min à pied)',
+    bus: 'Bus 2234, arrêt La Boiserie (4 min à pied)',
     parking: 'Parking gratuit sur place',
   },
   hours: HOURS_DISPLAY,

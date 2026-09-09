@@ -77,7 +77,7 @@ export default function Account() {
           <div>
             <h1 className="font-serif text-3xl font-bold text-text md:text-4xl">Mon Compte</h1>
             <p className="mt-2 text-base text-text-light">
-              {profile.first_name} {profile.last_name} — {dbUser?.email}
+              {profile.first_name} {profile.last_name} · {dbUser?.email}
             </p>
           </div>
           <div className="flex flex-col gap-2 sm:flex-row">
