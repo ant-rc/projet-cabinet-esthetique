@@ -79,9 +79,12 @@ export default function Contact() {
             <div className="card-hover rounded-2xl border border-primary-light/50 bg-white p-6">
               <h2 className="font-serif text-lg font-semibold text-text">Horaires</h2>
               <div className="mt-3 flex flex-col gap-1.5 text-sm text-text-light">
-                <p><span className="font-medium text-text">Mardi — Samedi :</span> {centerInfo.hours.tuesday_saturday}</p>
-                <p><span className="font-medium text-text">Dimanche :</span> {centerInfo.hours.sunday}</p>
-                <p><span className="font-medium text-text">Lundi :</span> {centerInfo.hours.monday}</p>
+                {centerInfo.hours.map((slot) => (
+                  <p key={slot.label}>
+                    <span className="font-medium text-text">{slot.label} :</span> {slot.value}
+                  </p>
+                ))}
+                <p className="text-xs">Sur rendez-vous.</p>
               </div>
             </div>
           </div>

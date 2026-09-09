@@ -1,3 +1,6 @@
+// Import relatif volontaire : ce module est aussi chargé par vite.config.ts pour
+// générer le sitemap et le HTML prérendu, hors du résolveur d'alias de l'application.
+import { OPENING_HOURS, SLOT_STEP_MINUTES, HOURS_DISPLAY } from './openingHours';
 import type { DbService, FAQItem, ServiceCategory, Gender } from '@/types';
 
 // ─── Static services data (mirrors Supabase services table) ───
@@ -98,42 +101,50 @@ export function getCategoriesForGender(gender: Gender): CategoryInfo[] {
   return categories.filter((c) => availableCategories.has(c.id));
 }
 
-// ─── Availability (static, mirrors Supabase) ───
-
-export interface AvailabilitySlot {
-  dayOfWeek: number;
-  startTime: string;
-  endTime: string;
-}
-
-export const availabilityData: AvailabilitySlot[] = [
-  { dayOfWeek: 2, startTime: '09:30', endTime: '21:00' }, // Mardi
-  { dayOfWeek: 3, startTime: '09:30', endTime: '21:00' }, // Mercredi
-  { dayOfWeek: 4, startTime: '09:30', endTime: '21:00' }, // Jeudi
-  { dayOfWeek: 5, startTime: '09:30', endTime: '21:00' }, // Vendredi
-  { dayOfWeek: 6, startTime: '09:30', endTime: '21:00' }, // Samedi
-  { dayOfWeek: 0, startTime: '09:30', endTime: '14:00' }, // Dimanche
-];
+// ─── Availability ───
+// Les horaires vivent dans data/openingHours.ts, lu aussi par le build.
 
 export function generateTimeSlots(date: string, durationMinutes: number = 30): { time: string; available: boolean }[] {
   const [y, m, d] = date.split('-').map(Number);
   const dayOfWeek = new Date(y, m - 1, d).getDay(); // 0=Sun, 1=Mon, ..., 6=Sat
 
-  const slot = availabilityData.find((a) => a.dayOfWeek === dayOfWeek);
-  if (!slot) return []; // Closed (Monday)
+  const slot = OPENING_HOURS.find((a) => a.dayOfWeek === dayOfWeek);
+  if (!slot) return []; // Jour de fermeture
 
-  const [startH, startM] = slot.startTime.split(':').map(Number);
-  const [endH, endM] = slot.endTime.split(':').map(Number);
-  const startMinutes = startH * 60 + startM;
-  const endMinutes = endH * 60 + endM;
+  const toMinutes = (time: string) => {
+    const [h, m] = time.split(':').map(Number);
+    return h * 60 + m;
+  };
+  const startMinutes = toMinutes(slot.opensAt);
+  const lastSlotMinutes = toMinutes(slot.lastSlotAt);
+  const endMinutes = toMinutes(slot.closesAt);
 
   const slots: { time: string; available: boolean }[] = [];
-  const step = 15; // 15-minute step between start times
 
-  for (let mins = startMinutes; mins + durationMinutes <= endMinutes; mins += step) {
+  // Deux bornes, et il faut les deux.
+  //
+  // `mins <= lastSlotMinutes` tient la promesse affichée : aucune séance ne
+  // démarre après l'heure annoncée comme dernier créneau, même une séance
+  // courte qui aurait matériellement le temps de tenir.
+  //
+  // `mins + durationMinutes <= endMinutes` fait reculer le dernier départ des
+  // séances longues, qui doivent finir avant la fermeture. Sans elle, une
+  // séance de deux heures partirait au dernier créneau et déborderait d'une
+  // heure.
+  for (
+    let mins = startMinutes;
+    mins <= lastSlotMinutes && mins + durationMinutes <= endMinutes;
+    mins += SLOT_STEP_MINUTES
+  ) {
     const h = Math.floor(mins / 60);
     const min = mins % 60;
     const time = `${h.toString().padStart(2, '0')}:${min.toString().padStart(2, '0')}`;
+    // `available` reste vrai : cette grille ne sert qu'au déplacement d'un RDV
+    // depuis /mes-rdv, et la politique RLS n'autorise une patiente à lire que
+    // ses propres rendez-vous. Détecter un chevauchement avec les rendez-vous
+    // des autres suppose une fonction serveur dédiée qui ne renvoie que des
+    // intervalles occupés, sans donnée personnelle. La réservation elle-même
+    // passe par Calendly, qui refuse déjà les chevauchements.
     slots.push({ time, available: true });
   }
 
@@ -194,11 +205,7 @@ export const centerInfo = {
     bus: 'Bus 2234 — Arrêt La Boiserie (4 min à pied)',
     parking: 'Parking gratuit sur place',
   },
-  hours: {
-    tuesday_saturday: '09h30 – 21h00 (sur rendez-vous)',
-    sunday: '09h30 – 14h00 (sur rendez-vous)',
-    monday: 'Fermé',
-  },
+  hours: HOURS_DISPLAY,
   machine: {
     name: 'Candela GentleMax Pro',
     technology: 'Alexandrite & Nd:YAG',

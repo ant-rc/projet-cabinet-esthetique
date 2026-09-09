@@ -1,48 +1,87 @@
+import { SLOT_STEP_MINUTES } from '@/data/openingHours';
+
 /**
- * Maps total session duration (minutes) to the closest Calendly event type slug.
- * The user must create matching event types in their Calendly dashboard.
+ * Choix du type d'événement Calendly en fonction de la durée réelle de la séance.
  *
- * Base URL is read from VITE_CALENDLY_URL env var (e.g. https://calendly.com/aalasermed).
+ * C'est Calendly qui fait autorité sur l'agenda : le créneau bloqué est celui du
+ * type d'événement réservé, pas celui que le site affiche. Tant que toutes les
+ * réservations pointaient vers un unique événement de 30 minutes, une séance de
+ * trois zones bloquait 30 minutes et les créneaux suivants restaient ouverts,
+ * d'où des chevauchements réels.
+ *
+ * L'URL de base est lue depuis VITE_CALENDLY_URL (ex. https://calendly.com/aalasermed).
  */
 
 const CALENDLY_BASE = (import.meta.env.VITE_CALENDLY_URL as string | undefined) ?? '';
 
-/*
- * Duration-to-slug mapping (activate when multiple event types are created):
- *
- * { maxMinutes: 15, slug: 'seance-15' },
- * { maxMinutes: 20, slug: 'seance-20' },
- * { maxMinutes: 25, slug: 'seance-25' },
- * { maxMinutes: 30, slug: 'seance-30' },
- * { maxMinutes: 35, slug: 'seance-35' },
- * { maxMinutes: 40, slug: 'seance-40' },
- * { maxMinutes: 45, slug: 'seance-45' },
- * { maxMinutes: 60, slug: 'seance-60' },
- * { maxMinutes: 75, slug: 'seance-75' },
- */
+/** Durée de la première consultation, gratuite et obligatoire. */
+export const CONSULTATION_MINUTES = 30;
 
 /**
- * Get the Calendly event URL for a given total duration.
+ * Nombre maximum de créneaux consécutifs réservables en ligne.
  *
- * On the free plan, only one event type is available.
- * All bookings point to the single active event ("consultation").
- * When more event types are created, uncomment the duration-based logic.
+ * Huit demi-heures, soit quatre heures. Au-delà, la séance dépasse l'amplitude
+ * d'ouverture du dimanche et représente un panier inhabituel : la prise de
+ * rendez-vous passe alors par téléphone.
  */
-export function getCalendlyEventUrl(_durationMinutes: number, _isConsultation: boolean): string {
-  if (!CALENDLY_BASE) return '';
+export const MAX_SESSION_SLOTS = 8;
 
-  // Free plan: single event type for everything
-  return `${CALENDLY_BASE}/consultation`;
+/**
+ * Nombre de créneaux occupés par une séance.
+ *
+ * La durée est arrondie au pas supérieur : sur une grille d'une demi-heure, une
+ * séance de 1h25 occupe trois créneaux, pas deux et demi. C'est ce qui empêche
+ * le créneau suivant d'être réservé par quelqu'un d'autre.
+ */
+export function slotsForDuration(durationMinutes: number): number {
+  return Math.max(1, Math.ceil(durationMinutes / SLOT_STEP_MINUTES));
+}
 
-  // Uncomment when multiple event types are available:
-  // if (isConsultation) return `${CALENDLY_BASE}/consultation`;
-  // const match = DURATION_SLUGS.find((d) => durationMinutes <= d.maxMinutes);
-  // return `${CALENDLY_BASE}/${match?.slug ?? 'seance-30'}`;
+/** Durée réellement bloquée dans l'agenda, en minutes. */
+export function reservedMinutes(durationMinutes: number): number {
+  return slotsForDuration(durationMinutes) * SLOT_STEP_MINUTES;
+}
+
+/** Vrai si la séance dépasse ce qui est réservable en ligne. */
+export function exceedsOnlineBooking(durationMinutes: number): boolean {
+  return slotsForDuration(durationMinutes) > MAX_SESSION_SLOTS;
 }
 
 /**
- * Build UTM parameters to pass service info to Calendly.
- * These appear in the webhook payload under `tracking`.
+ * URL de l'événement Calendly correspondant à la durée.
+ *
+ * Renvoie une chaîne vide si Calendly n'est pas configuré ou si la séance
+ * dépasse la réservation en ligne ; l'appelant doit traiter les deux cas.
+ *
+ * Le slug porte la durée en minutes, convention déjà en place côté tableau de
+ * bord. Types attendus, tous avec un incrément de départ d'une demi-heure :
+ *   consultation   30 min
+ *   seance-30      30 min
+ *   seance-60      60 min
+ *   seance-90      90 min
+ *   seance-120    120 min
+ *   seance-150    150 min
+ *   seance-180    180 min
+ *   seance-210    210 min
+ *   seance-240    240 min
+ *
+ * Un type manquant ne produit pas d'erreur ici : l'iframe Calendly affiche une
+ * page 404. Toute modification de MAX_SESSION_SLOTS ou de SLOT_STEP_MINUTES
+ * suppose donc de créer les types correspondants avant de déployer.
+ */
+export function getCalendlyEventUrl(durationMinutes: number, isConsultation: boolean): string {
+  if (!CALENDLY_BASE) return '';
+  if (isConsultation) return `${CALENDLY_BASE}/consultation`;
+  if (exceedsOnlineBooking(durationMinutes)) return '';
+
+  return `${CALENDLY_BASE}/seance-${reservedMinutes(durationMinutes)}`;
+}
+
+/**
+ * Paramètres UTM transmis à Calendly, présents ensuite dans le webhook sous `tracking`.
+ *
+ * Ce sont des métadonnées de suivi : elles n'ont aucun effet sur la durée
+ * réservée, qui dépend uniquement du type d'événement choisi ci-dessus.
  */
 export function buildCalendlyUtm(zones: string[], totalPrice: number, totalDuration: number): Record<string, string> {
   return {
