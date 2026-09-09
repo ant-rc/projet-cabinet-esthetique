@@ -20,11 +20,15 @@ const SCHEMA_DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Fr
  * Écrits en dur, ils annonçaient à Google une amplitude que l'agenda ne servait
  * pas. Les jours partageant les mêmes heures sont regroupés, comme le veut la
  * convention schema.org.
+ *
+ * `closes` porte `lastSlotAt`, l'heure du dernier créneau réservable, et non
+ * `closesAt` qui est l'heure de fin de cette dernière séance. Publier 20h
+ * amènerait des patientes devant une porte où plus rien n'est réservable.
  */
 function openingHoursJsonLd(indent: string): string {
   const groups = new Map<string, number[]>()
   for (const hours of OPENING_HOURS) {
-    const key = `${hours.opensAt}|${hours.closesAt}`
+    const key = `${hours.opensAt}|${hours.lastSlotAt}`
     groups.set(key, [...(groups.get(key) ?? []), hours.dayOfWeek])
   }
 
