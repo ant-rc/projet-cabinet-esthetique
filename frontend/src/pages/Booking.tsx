@@ -97,13 +97,21 @@ export default function Booking() {
    * endroit qui varie d'une réservation à l'autre, donc le seul qui puisse les
    * porter jusqu'à l'agenda.
    *
-   * `customAnswers.a1` vise la **première question personnalisée** du type
-   * réservé, et ce n'est pas la même partout :
-   *   consultation  question 1 = numéro de téléphone, obligatoire
-   *   seance-*      question 1 = champ libre, où l'on écrit les zones
+   * `customAnswers.aN` vise la **Nième question personnalisée** du type
+   * réservé, dans l'ordre où elle apparaît dans le tableau de bord. L'ordre
+   * n'est pas le même partout, et il fait partie du contrat :
    *
-   * Une réponse envoyée à un type qui n'a pas de question est simplement
-   * ignorée par Calendly, sans erreur.
+   *   consultation  a1 = téléphone
+   *   seance-*      a1 = zones à traiter, a2 = téléphone
+   *
+   * L'API Calendly ne permet pas de créer ces questions — elle accepte la
+   * requête et ignore le champ — elles se règlent donc dans le tableau de bord.
+   * Déplacer ou supprimer l'une d'elles décale les réponses sans rien casser
+   * de visible : la zone atterrirait dans le champ téléphone.
+   *
+   * Une réponse envoyée à une question inexistante est ignorée par Calendly,
+   * sans erreur : préremplir a2 avant que le champ téléphone existe n'a donc
+   * aucun effet, et n'attend rien d'autre que sa création.
    */
   const calendlyPrefill = useMemo(() => {
     const identity = profile && dbUser
@@ -115,13 +123,21 @@ export default function Booking() {
         }
       : {};
 
-    const firstAnswer = isConsultation
-      ? profile?.phone ?? ''
-      : selectedServiceNames.length > 0
-        ? `Zones : ${selectedServiceNames.join(', ')} (${formatDuration(totalDuration)})`
-        : '';
+    const phone = profile?.phone ?? '';
+    const zones = selectedServiceNames.length > 0
+      ? `Zones : ${selectedServiceNames.join(', ')} (${formatDuration(totalDuration)})`
+      : '';
 
-    return firstAnswer ? { ...identity, customAnswers: { a1: firstAnswer } } : identity;
+    const customAnswers: Record<string, string> = isConsultation
+      ? (phone ? { a1: phone } : {})
+      : {
+          ...(zones ? { a1: zones } : {}),
+          ...(phone ? { a2: phone } : {}),
+        };
+
+    return Object.keys(customAnswers).length > 0
+      ? { ...identity, customAnswers }
+      : identity;
   }, [profile, dbUser, isConsultation, selectedServiceNames, totalDuration]);
 
   const calendlyUtm = useMemo(
