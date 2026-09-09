@@ -107,6 +107,15 @@
 }
 
 /* FAQ accordion transition */
+/*
+  Repli de la FAQ par la hauteur de piste : 0fr fermé, 1fr ouvert, ce qui
+  s'anime là où `height: auto` ne s'anime pas.
+
+  L'enfant direct doit rester sans rembourrage ni bordure. Sa hauteur minimale
+  est celle de sa boîte, padding compris, donc un `pb-5` posé ici plante un sol
+  de 20 px : la réponse ne se replie plus tout à fait et sa première ligne
+  reste visible sous la question. L'espacement se met sur le niveau en dessous.
+*/
 .faq-content {
   display: grid;
   grid-template-rows: 0fr;
@@ -116,6 +125,7 @@
   grid-template-rows: 1fr;
 }
 .faq-content > div {
+  min-height: 0;
   overflow: hidden;
 }
 

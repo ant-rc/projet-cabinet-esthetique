@@ -59,17 +59,27 @@ export default function FAQ() {
                   </span>
                 </button>
 
+                {/*
+                  Trois niveaux, et aucun n'est décoratif.
+
+                  Le premier porte la grille qui anime le repli. Le deuxième est
+                  volontairement nu : c'est lui que le CSS masque, et le moindre
+                  padding dessus l'empêcherait de descendre à zéro. Le troisième
+                  porte l'espacement.
+                */}
                 <div className={`faq-content ${isOpen ? 'open' : ''}`}>
-                  <div className="flex flex-col gap-2 px-6 pb-5">
-                    <p className="text-sm leading-relaxed text-text-light">{item.answer}</p>
-                    {slug && (
-                      <Link
-                        to={`/faq/${slug}`}
-                        className="self-start text-sm text-primary-dark underline"
-                      >
-                        En savoir plus
-                      </Link>
-                    )}
+                  <div>
+                    <div className="flex flex-col gap-2 px-6 pb-5">
+                      <p className="text-sm leading-relaxed text-text-light">{item.answer}</p>
+                      {slug && (
+                        <Link
+                          to={`/faq/${slug}`}
+                          className="self-start text-sm text-primary-dark underline"
+                        >
+                          En savoir plus
+                        </Link>
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
