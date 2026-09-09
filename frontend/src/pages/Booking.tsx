@@ -104,10 +104,14 @@ export default function Booking() {
    *   consultation  a1 = téléphone
    *   seance-*      a1 = zones à traiter, a2 = téléphone
    *
-   * L'API Calendly ne permet pas de créer ces questions — elle accepte la
-   * requête et ignore le champ — elles se règlent donc dans le tableau de bord.
+   * L'API Calendly ne permet pas de créer ces questions (elle accepte la
+   * requête et ignore le champ), elles se règlent donc dans le tableau de bord.
    * Déplacer ou supprimer l'une d'elles décale les réponses sans rien casser
    * de visible : la zone atterrirait dans le champ téléphone.
+   *
+   * La réponse doit se suffire à elle-même. L'intitulé de la question reste
+   * celui que Calendly pose par défaut, et il apparaît tel quel dans l'e-mail
+   * de notification, au-dessus de la réponse.
    *
    * Une réponse envoyée à une question inexistante est ignorée par Calendly,
    * sans erreur : préremplir a2 avant que le champ téléphone existe n'a donc
@@ -125,7 +129,7 @@ export default function Booking() {
 
     const phone = profile?.phone ?? '';
     const zones = selectedServiceNames.length > 0
-      ? `Zones : ${selectedServiceNames.join(', ')} (${formatDuration(totalDuration)})`
+      ? `Zones à traiter : ${selectedServiceNames.join(', ')}. Durée de soin ${formatDuration(totalDuration)}, ${totalPrice} €.`
       : '';
 
     const customAnswers: Record<string, string> = isConsultation
@@ -138,7 +142,7 @@ export default function Booking() {
     return Object.keys(customAnswers).length > 0
       ? { ...identity, customAnswers }
       : identity;
-  }, [profile, dbUser, isConsultation, selectedServiceNames, totalDuration]);
+  }, [profile, dbUser, isConsultation, selectedServiceNames, totalDuration, totalPrice]);
 
   const calendlyUtm = useMemo(
     () => buildCalendlyUtm(
