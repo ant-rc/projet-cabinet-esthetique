@@ -13,7 +13,6 @@ frontend/           l'application, et le seul dossier que Vercel construit
 supabase/
   functions/        Edge Functions (Deno)
   migrations/       schéma, versionné
-api/                code mort, voir plus bas
 dossier_cadrage/    documents de cadrage, gitignoré
 ```
 
@@ -97,12 +96,6 @@ curl -H "Authorization: Bearer $REMINDER_CRON_SECRET" \
 Aucun secret dans le dépôt. `frontend/.env` est gitignoré, `.env.example` sert de
 modèle. Les secrets serveur vivent dans les secrets de fonction Supabase, et le
 jeton du job cron dans Vault côté Postgres.
-
-## Le dossier `api/`
-
-`api/calendly/events.ts` et `api/webhooks/calendly.ts` sont **du code mort** :
-référencés nulle part, et situés hors du dossier que Vercel construit, donc
-jamais déployés. Conservés le temps de vérifier que rien ne s'y rattache.
 
 ## Documents de cadrage
 

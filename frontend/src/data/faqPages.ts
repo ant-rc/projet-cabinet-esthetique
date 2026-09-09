@@ -147,4 +147,3 @@ export function relatedFaqPages(slug: string, limit = 3): ResolvedFaqPage[] {
   return faqPages.filter((p) => p.slug !== slug).slice(0, limit);
 }
 
-export const faqUrls: string[] = faqPages.map((p) => `/faq/${p.slug}`);

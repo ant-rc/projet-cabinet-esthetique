@@ -185,7 +185,8 @@ function echapper(texte: string): string {
  * l'épilation à la pince compromettent une séance des semaines à l'avance ; se
  * raser la veille relève du rappel J-2, qui vit dans Calendly.
  *
- * [À VALIDER PAR ALINE] Comme tout contenu adressé aux patientes.
+ * Validé le 09/09/2026 par Antoine, pour Aline. Toute retouche est un contenu
+ * adressé aux patientes et repasse par une validation.
  */
 function corpsDuRappel(prenom: string, rendezVous: Date, lienReport: string) {
   const quand = dateEnFrancais(rendezVous);
