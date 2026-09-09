@@ -47,7 +47,7 @@ export default function Footer() {
         </div>
 
         <p className="text-xs text-text-light/60 lg:text-sm">
-          &copy; {currentYear} AA LASERMED &mdash; SAS au capital de 1 000 &euro; &mdash; RCS Meaux 100 897 057
+          &copy; {currentYear} AA LASERMED, SAS au capital de 1 000 &euro; &middot; RCS Meaux 100 897 057
         </p>
       </div>
     </footer>

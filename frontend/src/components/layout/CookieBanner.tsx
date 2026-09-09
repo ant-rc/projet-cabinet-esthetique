@@ -152,7 +152,7 @@ export default function CookieBanner() {
               <div>
                 <p className="text-xs font-semibold text-text">Mesure d&apos;audience</p>
                 <p className="mt-0.5 text-[11px] text-text-light">
-                  Vercel Analytics &mdash; pages consult&eacute;es et fr&eacute;quentation, sans
+                  Vercel Analytics : pages consult&eacute;es et fr&eacute;quentation, sans
                   cookie ni identifiant publicitaire. Rien n&apos;est charg&eacute; sans votre accord.
                 </p>
               </div>

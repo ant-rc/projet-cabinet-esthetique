@@ -61,7 +61,7 @@ export default function ServiceDetail() {
           <span aria-hidden="true">/</span>
           <Link to="/tarifs" className="hover:text-primary-dark">Tarifs</Link>
           <span aria-hidden="true">/</span>
-          <span className="text-text">{genderLabel} &mdash; {service.name}</span>
+          <span className="text-text">{genderLabel} &middot; {service.name}</span>
         </nav>
 
         <header className="flex flex-col gap-4">
@@ -121,7 +121,7 @@ export default function ServiceDetail() {
             d&apos;autobronzant 2 &agrave; 6 semaines avant.
           </p>
           <p className="text-sm leading-relaxed text-text-light">
-            Certaines situations contre-indiquent le traitement &mdash; grossesse, allaitement,
+            Certaines situations contre-indiquent le traitement : grossesse, allaitement,
             maladies auto-immunes, infections cutan&eacute;es actives, anticoagulants, traitements
             photosensibilisants. Elles sont v&eacute;rifi&eacute;es en consultation.{' '}
             <Link to="/mentions-legales" className="text-primary-dark underline">
@@ -151,7 +151,7 @@ export default function ServiceDetail() {
         {related.length > 0 && (
           <div className="flex flex-col gap-4">
             <h2 className="font-serif text-lg font-semibold text-text">
-              Autres zones &mdash; {categoryLabel.toLowerCase()} {genderLabel.toLowerCase()}
+              Autres zones &middot; {categoryLabel.toLowerCase()} {genderLabel.toLowerCase()}
             </h2>
             <div className="grid gap-3 sm:grid-cols-2">
               {related.map((item) => (
