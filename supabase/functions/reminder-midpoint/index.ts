@@ -16,12 +16,15 @@
 //
 // Secrets nécessaires :
 //   CALENDLY_PAT               déjà posé pour calendly-events
+//   REMINDER_CRON_SECRET       à poser, voir ci-dessous
 //   SUPABASE_URL               fourni par la plateforme
-//   SUPABASE_SERVICE_ROLE_KEY  fourni par la plateforme
+//   SUPABASE_SERVICE_ROLE_KEY  fourni par la plateforme, usage interne seulement
+//
+//   supabase secrets set REMINDER_CRON_SECRET=$(openssl rand -hex 32)
 //
 // Appel. `dryRun` vaut true par défaut : il faut demander explicitement l'envoi
 // réel, jamais l'inverse.
-//   curl -H "Authorization: Bearer $SERVICE_ROLE_KEY" \
+//   curl -H "Authorization: Bearer $REMINDER_CRON_SECRET" \
 //        "$SUPABASE_URL/functions/v1/reminder-midpoint?dryRun=true"
 
 // eslint-disable-next-line @typescript-eslint/triple-slash-reference
@@ -124,7 +127,14 @@ function decalageParis(instant: Date): number {
   for (const part of parts) p[part.type] = part.value;
 
   const murUtc = Date.UTC(+p.year, +p.month - 1, +p.day, +p.hour, +p.minute, +p.second);
-  return (murUtc - instant.getTime()) / 60000;
+
+  // Arrondi indispensable. Intl ne descend pas sous la seconde, donc la
+  // soustraction récupère au passage les millisecondes de `instant` et rend un
+  // décalage fractionnaire. Sans cet arrondi, l'heure d'envoi héritait de ces
+  // millisecondes et la comparaison de décalages plus bas devenait un test
+  // d'égalité entre deux flottants. Aucun fuseau réel n'a de décalage à la
+  // seconde près.
+  return Math.round((murUtc - instant.getTime()) / 60000);
 }
 
 /** L'instant correspondant à SEND_HOUR_PARIS le jour parisien du point médian. */
@@ -206,11 +216,16 @@ Deno.serve(async (req: Request) => {
 
   const cleService = env('SUPABASE_SERVICE_ROLE_KEY');
   const pat = env('CALENDLY_PAT');
+  const secretCron = env('REMINDER_CRON_SECRET');
 
-  // La réponse contient des adresses de patientes : réservée à la clé de
-  // service, celle que le planificateur présentera.
-  if (req.headers.get('Authorization') !== `Bearer ${cleService}`) {
-    return json({ error: 'Réservé à la clé de service.' }, 401);
+  // La réponse contient des adresses de patientes, l'accès est donc fermé.
+  //
+  // Le portier est un secret dédié, et non la clé de service : un planificateur
+  // n'a aucune raison de porter une clé capable de lire toutes les tables du
+  // projet. Ce secret n'ouvre que cet appel, et se change sans toucher au reste.
+  if (!secretCron) return json({ error: 'REMINDER_CRON_SECRET absent.' }, 500);
+  if (req.headers.get('Authorization') !== `Bearer ${secretCron}`) {
+    return json({ error: 'Jeton invalide.' }, 401);
   }
   if (!pat) return json({ error: 'CALENDLY_PAT absent.' }, 500);
 
