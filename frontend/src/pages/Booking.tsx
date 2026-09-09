@@ -88,15 +88,41 @@ export default function Booking() {
     [totalDuration, isConsultation],
   );
 
+  /**
+   * Préremplissage du formulaire Calendly.
+   *
+   * Les zones sélectionnées ne peuvent vivre ni dans le nom du type
+   * d'événement ni dans son adresse : un même type sert toutes les
+   * combinaisons de zones, et ces champs sont fixes. Le formulaire est le seul
+   * endroit qui varie d'une réservation à l'autre, donc le seul qui puisse les
+   * porter jusqu'à l'agenda.
+   *
+   * `customAnswers.a1` vise la **première question personnalisée** du type
+   * réservé, et ce n'est pas la même partout :
+   *   consultation  question 1 = numéro de téléphone, obligatoire
+   *   seance-*      question 1 = champ libre, où l'on écrit les zones
+   *
+   * Une réponse envoyée à un type qui n'a pas de question est simplement
+   * ignorée par Calendly, sans erreur.
+   */
   const calendlyPrefill = useMemo(() => {
-    if (!profile || !dbUser) return {};
-    return {
-      name: `${profile.first_name} ${profile.last_name}`.trim(),
-      email: dbUser.email,
-      firstName: profile.first_name,
-      lastName: profile.last_name,
-    };
-  }, [profile, dbUser]);
+    const identity = profile && dbUser
+      ? {
+          name: `${profile.first_name} ${profile.last_name}`.trim(),
+          email: dbUser.email,
+          firstName: profile.first_name,
+          lastName: profile.last_name,
+        }
+      : {};
+
+    const firstAnswer = isConsultation
+      ? profile?.phone ?? ''
+      : selectedServiceNames.length > 0
+        ? `Zones : ${selectedServiceNames.join(', ')} (${formatDuration(totalDuration)})`
+        : '';
+
+    return firstAnswer ? { ...identity, customAnswers: { a1: firstAnswer } } : identity;
+  }, [profile, dbUser, isConsultation, selectedServiceNames, totalDuration]);
 
   const calendlyUtm = useMemo(
     () => buildCalendlyUtm(
