@@ -78,5 +78,3 @@ export function relatedServices(service: DbService, limit = 4): DbService[] {
     .slice(0, limit);
 }
 
-/** Every service URL, for the sitemap. */
-export const serviceUrls: string[] = servicesData.map(servicePath);

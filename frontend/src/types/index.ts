@@ -56,19 +56,7 @@ export interface DbAppointment {
   calendly_event_uri: string | null;
 }
 
-export interface DbAvailability {
-  id: string;
-  day_of_week: number; // 0=Sun, 1=Mon, ..., 6=Sat
-  start_time: string;
-  end_time: string;
-}
-
 // ─── App types ───
-
-export interface AppointmentWithService extends DbAppointment {
-  service?: DbService;
-  profile?: DbProfile;
-}
 
 export interface TimeSlotData {
   time: string;
@@ -80,19 +68,3 @@ export interface FAQItem {
   answer: string;
 }
 
-// ─── Booking form ───
-
-export type BookingMode = 'authenticated' | 'guest';
-
-export interface BookingFormData {
-  serviceIds: string[];
-  date: string;
-  time: string;
-  isFirstConsultation: boolean;
-  notes: string;
-  bookingMode: BookingMode;
-  guestFirstName?: string;
-  guestLastName?: string;
-  guestPhone?: string;
-  guestEmail?: string;
-}
