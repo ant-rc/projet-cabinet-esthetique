@@ -1,3 +1,4 @@
 /.claude
 /dossier_cadrage
 supabase/.temp/
+.playwright-mcp/
