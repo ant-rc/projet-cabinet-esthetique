@@ -7,6 +7,7 @@ En production sur **[aa-lasermed.com](https://aa-lasermed.com)**.
 
 ```
 frontend/           l'application, et le seul dossier que Vercel construit
+  src/App.tsx       routeur. Toute route sauf l'accueil est chargée à la demande
   src/data/         catalogue, horaires, correspondance Calendly
   src/lib/          métadonnées de page, lues aussi par le build
   vite.config.ts    prerender par route, sitemap, injection du JSON-LD
