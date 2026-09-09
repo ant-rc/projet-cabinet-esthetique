@@ -34,7 +34,7 @@ export default function Technology() {
             <div className="overflow-hidden rounded-2xl border border-primary-light/30 shadow-lg">
               <img
                 src="/images/epilation-mannequin-machine.jpeg"
-                alt="Séance d'épilation laser avec le Candela GentleMax Pro — adapté à tous les types de peau"
+                alt="Séance d'épilation laser avec le Candela GentleMax Pro, adapté à tous les types de peau"
                 className="h-auto w-full object-cover"
                 loading="lazy"
               />

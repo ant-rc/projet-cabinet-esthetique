@@ -842,7 +842,7 @@ export default function PrestataireDashboard() {
                             {invitee && (
                               <div className="flex flex-col gap-0.5">
                                 <span className="text-sm text-text-light">
-                                  {invitee.name} — {invitee.email}
+                                  {invitee.name} · {invitee.email}
                                 </span>
                                 {invitee.zones && (
                                   <span className="text-xs text-primary-dark">

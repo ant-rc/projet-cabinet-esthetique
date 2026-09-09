@@ -16,7 +16,7 @@ export default function NotFound() {
       <Seo
         noindex
         path="/404"
-        title="Page introuvable — AA Laser Med"
+        title="Page introuvable | AA Laser Med"
         description="Cette page n'existe pas ou a été déplacée."
       />
       <div className="mx-auto flex max-w-xl flex-col items-center gap-6 text-center">

@@ -29,7 +29,7 @@ export default function FaqDetail() {
     <section className="page-enter px-4 py-16 lg:px-8 lg:py-24">
       <Seo
         path={`/faq/${page.slug}`}
-        title={`${page.title} — AA Laser Med`}
+        title={`${page.title} | AA Laser Med`}
         description={page.description}
       />
       <script

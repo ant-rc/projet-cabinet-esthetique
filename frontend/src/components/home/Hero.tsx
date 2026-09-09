@@ -25,7 +25,7 @@ export default function Hero() {
           </h1>
 
           <p className="hero-animate-3 max-w-md text-base text-text-light md:text-lg">
-            Par une infirmière diplômée d&apos;État — Technologie Candela GentleMax Pro
+            Par une infirmière diplômée d&apos;État, technologie Candela GentleMax Pro
           </p>
 
           <div className="hero-animate-4 flex flex-col gap-4 sm:flex-row">

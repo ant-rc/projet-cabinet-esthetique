@@ -13,7 +13,7 @@ export default function About() {
             <div className="relative overflow-hidden rounded-[2rem] border border-primary-light/30 shadow-lg">
               <img
                 src="/images/epilation-mannequin.jpeg"
-                alt="Résultat épilation laser — peau lisse et douce"
+                alt="Résultat épilation laser, peau lisse et douce"
                 className="h-auto w-full max-w-md object-cover"
                 loading="lazy"
               />

@@ -35,7 +35,7 @@ function RequireAuth({ children }: { children: ReactNode }) {
       <Seo
         noindex
         path="/account"
-        title="Espace patient — AA Laser Med"
+        title="Espace patient | AA Laser Med"
         description="Espace patient AA Laser Med."
       />
       {children}
@@ -53,7 +53,7 @@ function RequirePrestataire({ children }: { children: ReactNode }) {
       <Seo
         noindex
         path="/prestataire/dashboard"
-        title="Espace praticienne — AA Laser Med"
+        title="Espace praticienne | AA Laser Med"
         description="Interface de gestion AA Laser Med."
       />
       {children}
